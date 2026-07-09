@@ -250,6 +250,19 @@
   .cam-hint{color:#fff;font-size:13px;font-weight:700;background:rgba(0,0,0,.4);padding:6px 14px;border-radius:16px}
   .shutter{width:78px;height:78px;border-radius:50%;background:#fff;border:5px solid rgba(255,255,255,.45);cursor:pointer;box-shadow:0 0 0 4px rgba(0,0,0,.35);transition:.1s}
   .shutter:active{transform:scale(.9)}
+  .cam-flip{position:absolute;top:16px;left:16px;z-index:3;background:rgba(0,0,0,.5);border:none;color:#fff;height:44px;padding:0 14px;border-radius:22px;font-size:14px;font-weight:800;cursor:pointer}
+  .rec-timer{position:absolute;top:72px;left:50%;transform:translateX(-50%);z-index:3;background:rgba(210,40,40,.9);color:#fff;padding:6px 14px;border-radius:20px;font-size:14px;font-weight:800;display:none}
+  .rec-timer.on{display:block}
+  .recbtn{width:78px;height:78px;border-radius:50%;background:rgba(255,255,255,.22);border:5px solid #fff;cursor:pointer;display:flex;align-items:center;justify-content:center}
+  .recbtn:active{transform:scale(.92)}
+  .recbtn span{width:32px;height:32px;border-radius:50%;background:#ef3b3b;transition:.2s}
+  .recbtn.recording span{width:26px;height:26px;border-radius:6px}
+  /* 동영상 타일 배지 */
+  .vid-badge{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:2;width:34px;height:34px;border-radius:50%;background:rgba(0,0,0,.5);color:#fff;display:flex;align-items:center;justify-content:center;font-size:15px}
+  /* 단일 클립 재생 */
+  .clip-modal{position:absolute;inset:0;z-index:66;background:#000;display:none;align-items:center;justify-content:center}
+  .clip-modal.show{display:flex}
+  .clip-modal video{width:100%;height:100%;object-fit:contain;background:#000}
 
   /* 응원 작성 모달 */
   .cheer-modal{position:absolute;inset:0;z-index:62;background:rgba(20,14,8,.55);display:none;align-items:flex-end;justify-content:center}
@@ -434,7 +447,10 @@
     <div class="view" data-role="senior" data-tab="photo">
       <div class="greet"><div class="name">📷 내가 찍은 사진</div><div class="date-chip" id="seniorPhotoSub">오늘의 테마에 도전해요</div></div>
       <div class="theme-hint">🌼 오늘의 테마 — <b>"노란 꽃을 찾아보세요"</b><br>한 장 담으면 가족에게 바로 전해져요!</div>
-      <button class="big-btn p" onclick="captureManual()" style="margin-top:14px">📸 지금 사진 찍기</button>
+      <div style="display:flex;gap:10px;margin-top:14px">
+        <button class="big-btn p" style="flex:1;margin-top:0" onclick="captureManual()">📸 사진 찍기</button>
+        <button class="big-btn" style="flex:1;margin-top:0;background:#E56A6A" onclick="captureVideo()">🎥 동영상 촬영</button>
+      </div>
       <div class="section-title">나의 사진첩 <small id="seniorCount">0장</small></div>
       <div class="grid" id="seniorGrid"></div>
       <div id="seniorEmpty" class="empty"><span class="e-ico">📸</span>아직 찍은 사진이 없어요.<br>위 버튼으로 첫 사진을 남겨보세요!</div>
@@ -561,11 +577,23 @@
   <!-- 카메라 -->
   <div class="cam-modal" id="camModal">
     <video id="camVideo" autoplay playsinline muted></video>
-    <div class="cam-theme">🌼 오늘의 테마 · 노란 꽃을 담아보세요</div>
+    <div class="cam-theme" id="camTheme">🌼 오늘의 테마 · 노란 꽃을 담아보세요</div>
     <button class="cam-close" onclick="closeCamera()">✕</button>
-    <div class="cam-bottom"><div class="cam-hint">가운데 버튼을 눌러 사진을 찍으세요</div><button class="shutter" onclick="shoot()"></button></div>
+    <button class="cam-flip" id="camFlip" onclick="switchCamera()">🔄 전환</button>
+    <div class="rec-timer" id="recTimer">● 00:00</div>
+    <div class="cam-bottom">
+      <div class="cam-hint" id="camHint">가운데 버튼을 눌러 사진을 찍으세요</div>
+      <button class="shutter" id="shutterBtn" onclick="shoot()"></button>
+      <button class="recbtn" id="recBtn" onclick="toggleRec()" style="display:none"><span></span></button>
+    </div>
   </div>
   <input type="file" id="fileInput" accept="image/*" capture="environment" style="display:none" onchange="onFilePicked(event)" />
+
+  <!-- 동영상 단일 재생 -->
+  <div class="clip-modal" id="clipModal" onclick="if(event.target===this)closeClip()">
+    <video id="clipVideo" playsinline controls></video>
+    <button class="cam-close" onclick="closeClip()">✕</button>
+  </div>
 
   <!-- 응원 작성 -->
   <div class="cheer-modal" id="cheerModal" onclick="if(event.target===this)closeCheer()">
@@ -587,6 +615,7 @@
   <!-- 추억 영상 재생 -->
   <div class="mv-modal" id="mvModal">
     <div class="mv-stage" id="mvStage"></div>
+    <video id="mvVideo" playsinline muted style="display:none;position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#000;z-index:1"></video>
     <div class="mv-shade"></div>
     <div class="mv-top">🎬 이번 주 추억 영상 · ♪ 배경음악</div>
     <button class="mv-close" onclick="stopMemoryVideo()">✕</button>
@@ -803,59 +832,143 @@
   }
 
   /* ===================== 카메라 ===================== */
-  let camStream=null;
-  function captureManual(){ pendingPhotoCard=null; pendingPhotoInfo={m:{ico:'📷',title:'오늘의 순간',caption:'오늘도 예쁜 순간을 한 컷 남겼단다 📸'},g:groupById('photo')}; openCamera(); }
-  function openCamera(){
+  let camStream=null, camFacing='environment', camMode='photo';
+  let mediaRecorder=null, recChunks=[], recTimerId=null, recSeconds=0, recording=false;
+
+  function captureManual(){ pendingPhotoCard=null; pendingPhotoInfo={m:{ico:'📷',title:'오늘의 순간',caption:'오늘도 예쁜 순간을 한 컷 남겼단다 📸'},g:groupById('photo')}; openCamera('photo'); }
+  function captureVideo(){ pendingPhotoCard=null; pendingPhotoInfo={m:{ico:'🎥',title:'오늘의 동영상',caption:'오늘의 순간을 영상으로 남겼단다 🎥'},g:groupById('photo')}; openCamera('video'); }
+
+  function openCamera(mode){
+    camMode=mode||'photo';
+    // 동영상인데 녹화 미지원 브라우저 → 파일(모바일=캠코더)로 대체
+    if(camMode==='video' && !window.MediaRecorder && !(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia)){ fallbackFile(); return; }
+    setCamModeUI(); startStream();
+  }
+  function setCamModeUI(){
+    document.getElementById('shutterBtn').style.display=camMode==='photo'?'block':'none';
+    document.getElementById('recBtn').style.display=camMode==='video'?'flex':'none';
+    document.getElementById('camHint').textContent=camMode==='photo'?'가운데 버튼을 눌러 사진을 찍으세요':'가운데 버튼을 눌러 녹화를 시작/종료하세요';
+    document.getElementById('camTheme').textContent=camMode==='photo'?'🌼 오늘의 테마 · 노란 꽃을 담아보세요':'🎥 동영상 촬영 · 15초 이내로 짧게';
+    document.getElementById('recTimer').classList.remove('on');
+    document.getElementById('recBtn').classList.remove('recording');
+  }
+  function startStream(){
     const modal=document.getElementById('camModal');
     if(navigator.mediaDevices && navigator.mediaDevices.getUserMedia){
-      navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'},audio:false})
-        .then(stream=>{ camStream=stream; const v=document.getElementById('camVideo'); v.srcObject=stream; v.play().catch(()=>{}); modal.classList.add('show'); })
+      navigator.mediaDevices.getUserMedia({video:{facingMode:camFacing}, audio: camMode==='video'})
+        .then(stream=>{ camStream=stream; const v=document.getElementById('camVideo'); v.srcObject=stream; v.muted=true; v.play().catch(()=>{}); modal.classList.add('show'); })
         .catch(()=>{ fallbackFile(); });
     } else { fallbackFile(); }
   }
-  function fallbackFile(){ document.getElementById('fileInput').click(); }
+  function switchCamera(){
+    if(recording){ toast('녹화 중에는 전환할 수 없어요'); return; }
+    camFacing = camFacing==='environment'?'user':'environment';
+    if(camStream){ camStream.getTracks().forEach(t=>t.stop()); camStream=null; }
+    startStream();
+    toast(camFacing==='user'?'전면 카메라로 전환 📱':'후면 카메라로 전환 📷');
+  }
+  function fallbackFile(){ const fi=document.getElementById('fileInput'); fi.accept=camMode==='video'?'video/*':'image/*'; fi.click(); }
+
   function shoot(){
     const v=document.getElementById('camVideo'); const c=document.createElement('canvas');
     c.width=v.videoWidth||720; c.height=v.videoHeight||960; c.getContext('2d').drawImage(v,0,0,c.width,c.height);
     let url=null; try{ url=c.toDataURL('image/jpeg',0.85); }catch(_){ url=null; }
-    closeCamera(); onPhotoTaken(url);
+    saveMedia('photo',url,null);
   }
-  function closeCamera(){ document.getElementById('camModal').classList.remove('show'); if(camStream){ camStream.getTracks().forEach(t=>t.stop()); camStream=null; } }
-  function onFilePicked(e){ const f=e.target.files&&e.target.files[0]; if(!f){return;} const r=new FileReader(); r.onload=()=>onPhotoTaken(r.result); r.readAsDataURL(f); e.target.value=''; }
 
-  function onPhotoTaken(url){
-    const info=pendingPhotoInfo||{m:{ico:'📷',title:'오늘의 순간',caption:'오늘도 한 컷 남겼단다 📸'},g:groupById('photo')};
-    const m=info.m;
-    const photo={url:url||null, bg:url?null:'linear-gradient(135deg,#FDE7A0,#F5B942)', emoji:url?null:(m.ico||'🌼'),
+  /* 동영상 녹화 */
+  function toggleRec(){ if(!recording) startRec(); else stopRec(); }
+  function startRec(){
+    if(!camStream){ return; }
+    if(!window.MediaRecorder){ toast('이 브라우저는 앱 내 녹화를 지원하지 않아요'); fallbackFile(); return; }
+    recChunks=[];
+    try{ mediaRecorder=new MediaRecorder(camStream); }catch(e){ toast('녹화를 시작할 수 없어요'); return; }
+    mediaRecorder.ondataavailable=e=>{ if(e.data && e.data.size) recChunks.push(e.data); };
+    mediaRecorder.onstop=onRecStop;
+    mediaRecorder.start();
+    recording=true; recSeconds=0;
+    document.getElementById('recBtn').classList.add('recording');
+    const rt=document.getElementById('recTimer'); rt.classList.add('on'); rt.textContent='● 00:00';
+    recTimerId=setInterval(()=>{ recSeconds++; const s=String(recSeconds%60).padStart(2,'0'); rt.textContent='● 00:'+s; if(recSeconds>=15) stopRec(); },1000);
+  }
+  function stopRec(){
+    if(!recording) return; recording=false;
+    document.getElementById('recBtn').classList.remove('recording');
+    document.getElementById('recTimer').classList.remove('on');
+    clearInterval(recTimerId); recTimerId=null;
+    try{ if(mediaRecorder && mediaRecorder.state==='recording') mediaRecorder.stop(); }catch(e){}
+  }
+  function onRecStop(){
+    const blob=new Blob(recChunks,{type:(recChunks[0]&&recChunks[0].type)||'video/webm'});
+    const url=URL.createObjectURL(blob);
+    makePoster(url,poster=>saveMedia('video',url,poster));
+  }
+  function makePoster(url,cb){
+    let done=false; const finish=p=>{ if(done)return; done=true; cb(p); };
+    const v=document.createElement('video'); v.src=url; v.muted=true; v.playsInline=true;
+    v.onloadeddata=()=>{ try{ v.currentTime=Math.min(0.1,(v.duration||1)); }catch(e){ finish(null); } };
+    v.onseeked=()=>{ try{ const c=document.createElement('canvas'); c.width=v.videoWidth||480; c.height=v.videoHeight||640; c.getContext('2d').drawImage(v,0,0,c.width,c.height); finish(c.toDataURL('image/jpeg',0.7)); }catch(e){ finish(null); } };
+    v.onerror=()=>finish(null);
+    setTimeout(()=>finish(null),1500);
+  }
+
+  function closeCamera(){ if(recording){ stopRec(); return; } finalizeCam(); }
+  function finalizeCam(){ document.getElementById('camModal').classList.remove('show'); if(camStream){ camStream.getTracks().forEach(t=>t.stop()); camStream=null; } }
+
+  function onFilePicked(e){
+    const f=e.target.files&&e.target.files[0]; if(!f){return;}
+    const isVid=(f.type||'').indexOf('video')===0;
+    const r=new FileReader();
+    r.onload=()=>{ if(isVid){ makePoster(r.result,p=>saveMedia('video',r.result,p)); } else { saveMedia('photo',r.result,null); } };
+    r.readAsDataURL(f); e.target.value='';
+  }
+
+  /* 사진/동영상 공통 저장 */
+  function saveMedia(type,url,poster){
+    const info=pendingPhotoInfo||{m:{ico:type==='video'?'🎥':'📷',title:type==='video'?'오늘의 동영상':'오늘의 순간',caption:'오늘도 한 컷 남겼단다'},g:groupById('photo')};
+    const m=info.m, hasImg=!!(url||poster);
+    const item={type:type, url:url||null, poster:poster||null,
+      bg:hasImg?null:'linear-gradient(135deg,#FDE7A0,#F5B942)', emoji:hasImg?null:(m.ico||'🌼'),
       title:m.title, caption:m.caption||'오늘의 한 컷', ts:Date.now()};
-    photos.unshift(photo);
-    toast('사진을 찍었어요! 가족에게 전달됐어요 🌸');
-    // 부모 홈 미션 카드 완료
+    photos.unshift(item);
+    toast(type==='video'?'동영상을 저장했어요! 갤러리에 담겼어요 🎥':'사진을 찍었어요! 가족에게 전달됐어요 🌸');
+    // 홈 미션 카드 완료(사진 미션에서 진입 시)
     if(pendingPhotoCard && !pendingPhotoCard.classList.contains('done')){
       pendingPhotoCard.classList.add('done'); pendingPhotoCard.querySelector('.bar>i').style.width='100%';
       const chk=pendingPhotoCard.querySelector('.m-check'); chk.textContent='✓'; chk.style.background='var(--green)'; chk.style.borderColor='var(--green)';
       pendingPhotoCard.querySelector('.m-sub').textContent='방금 촬영 완료 · 또래 제치고 1등! 📸'; updateSummary();
     }
-    // 자녀 소식/알림 — 부모 미션과 완전히 같은 내용
-    addFeedPost({kind:'photo',avatar:m.ico,name:'엄마가 사진을 남겼어요',msg:'“'+photo.caption+'”',
-      pillClass:'p',pillText:'📷 '+m.title,ts:photo.ts,url:photo.url,bg:photo.bg});
-    addNoti({ico:'📷',bg:'var(--pink-soft)',text:"엄마가 <b>사진 미션</b>을 완료했어요 · "+m.title,ts:photo.ts});
+    // 자녀 소식/알림
+    addFeedPost({kind:type,avatar:m.ico,name:type==='video'?'엄마가 동영상을 남겼어요':'엄마가 사진을 남겼어요',
+      msg:'“'+item.caption+'”',pillClass:'p',pillText:(type==='video'?'🎥 ':'📷 ')+m.title,
+      ts:item.ts,url:item.url,poster:item.poster,bg:item.bg});
+    addNoti({ico:type==='video'?'🎥':'📷',bg:'var(--pink-soft)',text:'엄마가 <b>'+(type==='video'?'동영상':'사진')+'</b>을(를) 남겼어요 · '+m.title,ts:item.ts});
+    finalizeCam();
     renderSeniorPhotos(); renderGallery();
     if(role==='senior') go('photo');
   }
 
+  /* 단일 클립 재생 */
+  function playClip(url){ if(!url){return;} const m=document.getElementById('clipModal'); const v=document.getElementById('clipVideo'); v.src=url; m.classList.add('show'); v.play().catch(()=>{}); }
+  function playClipAt(i){ const p=photos[i]; if(p && p.type==='video' && p.url) playClip(p.url); }
+  function playFeedClip(i){ const p=feedPosts[i]; if(p && p.url) playClip(p.url); }
+  function closeClip(){ const v=document.getElementById('clipVideo'); v.pause(); v.removeAttribute('src'); v.load(); document.getElementById('clipModal').classList.remove('show'); }
+
   /* ===================== 부모 사진첩 ===================== */
-  function photoStyle(p){ return p.url?"background-image:url('"+p.url+"');background-size:cover;background-position:center":"background:"+(p.bg||'linear-gradient(135deg,#FDE7A0,#F5B942)'); }
-  function tileHTML(p,gated){
+  function mediaSrc(p){ return p.type==='video'?(p.poster||''):(p.url||''); }
+  function photoStyle(p){ const s=mediaSrc(p); return s?("background-image:url('"+s+"');background-size:cover;background-position:center"):("background:"+(p.bg||'linear-gradient(135deg,#FDE7A0,#F5B942)')); }
+  function tileHTML(p,gated,idx){
     const locked=gated&&!isToday(p.ts);
-    return '<div class="ph"><div class="ph-img'+(locked?' blurred':'')+'" style="'+photoStyle(p)+'">'+(p.emoji?'<span>'+p.emoji+'</span>':'')+'</div>'+
-      (locked?'<div class="lockbadge">🔒<small>유료</small></div>':'')+'</div>';
+    const isVid=p.type==='video';
+    const click=(isVid && p.url && !locked)?' onclick="playClipAt('+idx+')"':'';
+    return '<div class="ph"'+click+'><div class="ph-img'+(locked?' blurred':'')+'" style="'+photoStyle(p)+'">'+(p.emoji?'<span>'+p.emoji+'</span>':'')+'</div>'+
+      (isVid&&!locked?'<div class="vid-badge">▶</div>':'')+(locked?'<div class="lockbadge">🔒<small>유료</small></div>':'')+'</div>';
   }
   function renderSeniorPhotos(){
     const grid=document.getElementById('seniorGrid'), empty=document.getElementById('seniorEmpty');
-    const cnt=document.getElementById('seniorCount'); if(cnt) cnt.textContent=photos.length+'장';
+    const cnt=document.getElementById('seniorCount'); if(cnt) cnt.textContent=photos.length+'개';
     if(!grid) return;
-    grid.innerHTML=photos.map(p=>tileHTML(p,false)).join('');   // 부모는 자기 사진 항상 봄
+    grid.innerHTML=photos.map((p,i)=>tileHTML(p,false,i)).join('');   // 부모는 자기 사진 항상 봄
     grid.style.display=photos.length?'grid':'none';
     if(empty) empty.style.display=photos.length?'none':'block';
   }
@@ -876,8 +989,8 @@
     if(!photos.length){
       gp.innerHTML='<div class="empty"><span class="e-ico">📷</span>아직 사진이 없어요.<br>부모님이 사진을 찍으면 여기에 모여요.</div>';
     } else {
-      let note = isPaid?'':'<div class="wk-badge">🔒 무료 버전은 <b>오늘 사진</b>만 볼 수 있어요 · 지난 사진은 유료 버전에서 열려요</div>';
-      gp.innerHTML=note+'<div class="grid">'+photos.map(p=>tileHTML(p,!isPaid)).join('')+'</div>';
+      let note = isPaid?'':'<div class="wk-badge">🔒 무료 버전은 <b>오늘 사진·영상</b>만 볼 수 있어요 · 지난 것은 유료 버전에서 열려요</div>';
+      gp.innerHTML=note+'<div class="grid">'+photos.map((p,i)=>tileHTML(p,!isPaid,i)).join('')+'</div>';
     }
     // 영상 탭
     const gv=document.getElementById('galVideo');
@@ -888,11 +1001,12 @@
     } else if(!photos.length){
       gv.innerHTML='<div class="empty"><span class="e-ico">📽️</span>사진을 찍으면 이번 주 추억 영상이<br>자동으로 만들어져요.</div>';
     } else {
+      const vids=photos.filter(p=>p.type==='video').length;
       const slides=photos.slice(0,8).map((p,i)=>'<div class="slide'+(i===0?' on':'')+'" style="'+photoStyle(p)+'"></div>').join('');
-      gv.innerHTML='<div class="wk-badge">✨ 매주 일요일, 한 주간 사진으로 자동 완성돼요</div>'+
+      gv.innerHTML='<div class="wk-badge">✨ 매주 일요일, 한 주간 사진·동영상으로 자동 완성돼요</div>'+
         '<div class="video" onclick="playMemoryVideo()"><div class="frame" id="vframe">'+slides+
         '<div class="play">▶</div><div class="v-overlay"><h3>이번 주 · 엄마의 하루</h3>'+
-        '<p>사진 '+photos.length+'장으로 자동 완성 · ▶ 약 '+Math.min(59,Math.max(20,photos.length*6))+'초</p></div></div></div>'+
+        '<p>사진·영상 '+photos.length+'개'+(vids?' (동영상 '+vids+')':'')+'로 자동 완성 · ▶ 약 '+Math.min(59,Math.max(20,photos.length*6))+'초</p></div></div></div>'+
         '<div class="react" style="justify-content:center;margin-top:14px">'+
         '<button onclick="event.stopPropagation();toast(\'영상을 저장했어요 💾\')">💾 저장</button>'+
         '<button onclick="event.stopPropagation();toast(\'가족에게 공유했어요 📤\')">📤 가족 공유</button></div>';
@@ -905,19 +1019,37 @@
   function playMemoryVideo(){
     if(!isPaid){ toast('유료 버전에서 볼 수 있어요 ⭐'); return; }
     if(!photos.length){ toast('아직 사진이 없어요 📷'); return; }
-    mvIdx=0; document.getElementById('mvModal').classList.add('show'); showMvFrame(); startBGM();
-    mvTimer=setInterval(()=>{ mvIdx++; if(mvIdx>=photos.length) mvIdx=0; showMvFrame(); },2600);
+    mvIdx=0; document.getElementById('mvModal').classList.add('show'); startBGM(); showMvFrame();
   }
+  function mvAdvance(){ mvIdx++; if(mvIdx>=photos.length) mvIdx=0; showMvFrame(); }
   function showMvFrame(){
-    const p=photos[mvIdx], stage=document.getElementById('mvStage');
-    if(p.url){ stage.style.backgroundImage="url('"+p.url+"')"; }
-    else{ stage.style.backgroundImage='none'; stage.style.background=p.bg||'linear-gradient(135deg,#FDE7A0,#F5B942)'; }
-    stage.style.animation='none'; void stage.offsetWidth; stage.style.animation='ken 7s ease forwards';
+    clearTimeout(mvTimer);
+    const p=photos[mvIdx], stage=document.getElementById('mvStage'), vid=document.getElementById('mvVideo');
     document.getElementById('mvCap').textContent='“'+(p.caption||'')+'”';
     document.getElementById('mvCount').textContent=(mvIdx+1)+' / '+photos.length;
     document.getElementById('mvProg').style.width=((mvIdx+1)/photos.length*100)+'%';
+    if(p.type==='video' && p.url){
+      // 찍은 동영상 클립을 실제로 재생 (배경음악 유지 위해 음소거)
+      stage.style.display='none'; vid.style.display='block';
+      vid.src=p.url; vid.muted=true; try{ vid.currentTime=0; }catch(e){}
+      vid.play().catch(()=>{});
+      vid.onended=mvAdvance;
+      mvTimer=setTimeout(mvAdvance,9000);   // 안전 상한
+    } else {
+      vid.pause(); vid.style.display='none'; stage.style.display='block';
+      const s=mediaSrc(p);
+      if(s){ stage.style.backgroundImage="url('"+s+"')"; }
+      else{ stage.style.backgroundImage='none'; stage.style.background=p.bg||'linear-gradient(135deg,#FDE7A0,#F5B942)'; }
+      stage.style.animation='none'; void stage.offsetWidth; stage.style.animation='ken 7s ease forwards';
+      mvTimer=setTimeout(mvAdvance,2600);
+    }
   }
-  function stopMemoryVideo(){ document.getElementById('mvModal').classList.remove('show'); if(mvTimer){clearInterval(mvTimer);mvTimer=null;} stopBGM(); }
+  function stopMemoryVideo(){
+    document.getElementById('mvModal').classList.remove('show');
+    clearTimeout(mvTimer); mvTimer=null;
+    const vid=document.getElementById('mvVideo'); vid.pause(); vid.onended=null;
+    stopBGM();
+  }
 
   let audioCtx=null, bgmTimer=null, bgmStep=0;
   function startBGM(){
@@ -944,22 +1076,26 @@
   function stopBGM(){ if(bgmTimer){clearInterval(bgmTimer);bgmTimer=null;} if(audioCtx){ try{audioCtx.close();}catch(e){} audioCtx=null; } }
 
   /* ===================== 부모 소식(피드) ===================== */
-  function feedCardHTML(p){
-    let photo='';
-    if(p.kind==='photo'){
+  function feedCardHTML(p,idx){
+    let media='';
+    if(p.kind==='photo' || p.kind==='video'){
       const locked=!isPaid && olderThanDay(p.ts);
-      const style=p.url?"background-image:url('"+p.url+"');background-size:cover;background-position:center":"background:"+(p.bg||'linear-gradient(135deg,#FDE7A0,#F5B942)');
-      photo='<div class="f-photo"><div class="fp-img'+(locked?' blurred':'')+'" style="'+style+'"></div>'+
-        (locked?'<div class="fp-lock"><span class="l-ico">🔒</span>지난 사진은 유료 버전에서 볼 수 있어요</div>':'')+'</div>';
+      const isVid=p.kind==='video';
+      const src=isVid?(p.poster||''):(p.url||'');
+      const style=src?("background-image:url('"+src+"');background-size:cover;background-position:center"):("background:"+(p.bg||'linear-gradient(135deg,#FDE7A0,#F5B942)'));
+      const click=(isVid && p.url && !locked)?' onclick="playFeedClip('+idx+')"':'';
+      media='<div class="f-photo"'+click+'><div class="fp-img'+(locked?' blurred':'')+'" style="'+style+'"></div>'+
+        (isVid&&!locked?'<div class="vid-badge">▶</div>':'')+
+        (locked?'<div class="fp-lock"><span class="l-ico">🔒</span>지난 '+(isVid?'영상':'사진')+'은 유료 버전에서 볼 수 있어요</div>':'')+'</div>';
     }
     return '<div class="card feed"><div class="avatar">'+p.avatar+'</div><div style="flex:1">'+
-      '<div class="f-name">'+p.name+'</div><div class="f-time">'+timeLabel(p.ts)+'</div>'+photo+
+      '<div class="f-name">'+p.name+'</div><div class="f-time">'+timeLabel(p.ts)+'</div>'+media+
       '<div class="f-msg">'+p.msg+'</div><span class="pill '+(p.pillClass||'')+'">'+p.pillText+'</span>'+
       '<div class="react"><button onclick="like(this)">🧡 좋아요</button><button onclick="openCheer()">💬 응원 보내기</button></div></div></div>';
   }
   function renderFeed(){
     const list=document.getElementById('feedList'), empty=document.getElementById('feedEmpty'); if(!list) return;
-    list.innerHTML=feedPosts.map(feedCardHTML).join('');
+    list.innerHTML=feedPosts.map((p,i)=>feedCardHTML(p,i)).join('');
     if(empty) empty.style.display=feedPosts.length?'none':'block';
   }
   function addFeedPost(p){ feedPosts.unshift(p); renderFeed(); }
@@ -1055,7 +1191,7 @@
 
   /* ===================== 초기화 ===================== */
   tickClock(); setInterval(tickClock,1000); fillDates();
-  renderHomeMissions(); renderSeniorPhotos(); renderGallery(); renderFeed(); renderNoti(); renderGifts();
+  renderHomeMissions(); renderSeniorPhotos(); renderGallery(); renderFeed(); renderNoti();
   renderTabs('home');
 </script>
 </body>
