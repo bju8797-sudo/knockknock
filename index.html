@@ -1,0 +1,1062 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>똑똑 (DdokDdok) — 부모의 하루를 두드리다</title>
+<style>
+  :root{
+    --brand:#F4A340; --brand-dark:#E08A1E; --brand-soft:#FFF3E2;
+    --green:#4CAF7D; --green-soft:#E6F4EC;
+    --blue:#5B8DEF; --blue-soft:#E9F0FE;
+    --pink:#EF6B8C; --pink-soft:#FCE9EF;
+    --ink:#2B2320; --muted:#8A817B; --line:#EDE6DF;
+    --bg:#FBF7F2; --card:#FFFFFF; --shadow:0 8px 24px rgba(120,90,40,.10);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%}
+  body{font-family:"Apple SD Gothic Neo","Malgun Gothic","맑은 고딕",system-ui,sans-serif;
+    background:linear-gradient(160deg,#F6EEE3,#EDE7F5);color:var(--ink);
+    display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px}
+
+  /* 폰 프레임 */
+  .phone{width:400px;max-width:100%;height:840px;max-height:94vh;background:var(--bg);
+    border-radius:38px;overflow:hidden;display:flex;flex-direction:column;position:relative;
+    box-shadow:0 30px 70px rgba(60,40,10,.30),0 0 0 10px #16110c,0 0 0 12px #2a221a}
+  .statusbar{height:34px;display:flex;align-items:center;justify-content:space-between;
+    padding:0 22px;font-size:13px;font-weight:700;color:var(--ink);flex:none}
+  .notch{position:absolute;top:8px;left:50%;transform:translateX(-50%);width:120px;height:22px;
+    background:#16110c;border-radius:0 0 16px 16px;z-index:20}
+
+  /* 역할 전환(데모) */
+  .rolebar{display:flex;gap:6px;padding:8px 14px 10px;flex:none}
+  .rolebar button{flex:1;border:none;padding:11px 8px;border-radius:14px;font-size:14px;font-weight:800;
+    background:#efe7dc;color:var(--muted);cursor:pointer;transition:.2s;letter-spacing:-.3px}
+  .rolebar button.on{background:var(--ink);color:#fff;box-shadow:var(--shadow)}
+
+  .screen{flex:1;overflow-y:auto;padding:4px 18px 100px;scrollbar-width:none}
+  .screen::-webkit-scrollbar{display:none}
+  .view{display:none;animation:fade .35s ease}
+  .view.active{display:block}
+  @keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+  .greet{padding:10px 4px 16px}
+  .greet .hi{font-size:15px;color:var(--muted);font-weight:600}
+  .greet .name{font-size:27px;font-weight:900;letter-spacing:-1px;margin-top:2px}
+  .greet .name span{color:var(--brand-dark)}
+  .date-chip{display:inline-block;margin-top:8px;background:#fff;border:1px solid var(--line);
+    padding:5px 12px;border-radius:20px;font-size:13px;font-weight:700;color:var(--muted)}
+
+  .card{background:var(--card);border-radius:22px;padding:20px;margin-bottom:14px;box-shadow:var(--shadow);border:1px solid #fff}
+  .section-title{font-size:15px;font-weight:800;margin:20px 4px 12px;letter-spacing:-.3px;display:flex;align-items:center;gap:8px}
+  .section-title small{color:var(--muted);font-weight:600;font-size:13px}
+
+  /* 미션 카드 */
+  .mission{display:flex;align-items:center;gap:16px;cursor:pointer;transition:.15s}
+  .mission:active{transform:scale(.98)}
+  .m-ico{width:60px;height:60px;border-radius:18px;display:flex;align-items:center;justify-content:center;font-size:30px;flex:none}
+  .m-body{flex:1;min-width:0}
+  .m-title{font-size:19px;font-weight:800;letter-spacing:-.5px}
+  .m-sub{font-size:14px;color:var(--muted);margin-top:2px}
+  .bar{height:10px;background:#eee6dc;border-radius:10px;margin-top:10px;overflow:hidden}
+  .bar > i{display:block;height:100%;border-radius:10px;transition:width 1s cubic-bezier(.3,1,.4,1)}
+  .m-check{width:34px;height:34px;border-radius:50%;border:3px solid var(--line);flex:none;
+    display:flex;align-items:center;justify-content:center;font-size:18px;color:#fff;font-weight:900}
+  .done .m-check{background:var(--green);border-color:var(--green)}
+  .done .m-title::after{content:" ✓";color:var(--green)}
+  .mc-green .m-ico{background:var(--green-soft)}  .mc-green .bar>i{background:var(--green)}
+  .mc-blue  .m-ico{background:var(--blue-soft)}   .mc-blue .bar>i{background:var(--blue)}
+  .mc-pink  .m-ico{background:var(--pink-soft)}   .mc-pink .bar>i{background:var(--pink)}
+  .mc-orange .m-ico{background:var(--brand-soft)} .mc-orange .bar>i{background:var(--brand)}
+  .mc-purple .m-ico{background:#EEE9FB}           .mc-purple .bar>i{background:#9B87F0}
+  .mc-teal  .m-ico{background:#E1F4F1}            .mc-teal .bar>i{background:#3BB6A0}
+  .mc-red   .m-ico{background:#FCE9E9}            .mc-red .bar>i{background:#E56A6A}
+
+  .summary{background:linear-gradient(135deg,var(--brand),#F6B95B);color:#fff;border:none;display:flex;align-items:center;gap:18px}
+  .ring{width:84px;height:84px;flex:none;border-radius:50%;
+    background:conic-gradient(#fff var(--p,66%),rgba(255,255,255,.35) 0);display:flex;align-items:center;justify-content:center}
+  .ring b{width:64px;height:64px;background:var(--brand);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:900}
+  .summary h3{font-size:20px;font-weight:900;letter-spacing:-.5px}
+  .summary p{font-size:14px;opacity:.95;margin-top:3px;line-height:1.4}
+
+  .big-btn{width:100%;border:none;border-radius:18px;padding:18px;font-size:19px;font-weight:800;color:#fff;
+    cursor:pointer;margin-top:6px;box-shadow:var(--shadow);letter-spacing:-.5px;transition:.15s}
+  .big-btn:active{transform:scale(.98)}
+  .big-btn.g{background:var(--green)} .big-btn.b{background:var(--blue)} .big-btn.p{background:var(--pink)} .big-btn.o{background:var(--brand-dark)}
+
+  input.f,textarea.f{width:100%;border:2px solid var(--line);border-radius:14px;padding:14px;font-size:16px;font-family:inherit;background:#fff;color:var(--ink)}
+  input.f:focus,textarea.f:focus{outline:none;border-color:var(--brand)}
+  label.f{display:block;font-size:14px;font-weight:800;margin:14px 0 6px}
+  .theme-hint{background:var(--pink-soft);border-radius:14px;padding:14px;font-size:14px;font-weight:700;color:#c2456a;line-height:1.5}
+
+  /* 그룹 변경 버튼 */
+  .grp-change{width:100%;border:1.5px dashed #e0b98c;background:#fff8f0;color:var(--brand-dark);
+    border-radius:16px;padding:13px;font-size:15px;font-weight:800;cursor:pointer;margin-top:2px}
+  .grp-change:active{transform:scale(.98)}
+
+  /* 미션 그룹 선택 (부모 groups 탭) */
+  .grp-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .grp{background:#fff;border:2.5px solid var(--line);border-radius:18px;padding:16px 12px;text-align:center;cursor:pointer;transition:.15s;position:relative}
+  .grp:active{transform:scale(.97)}
+  .grp.sel{border-color:var(--brand);background:var(--brand-soft)}
+  .grp.dim{opacity:.5}
+  .grp.lock{opacity:.55;border-style:dashed}
+  .grp .g-ico{font-size:34px}
+  .grp .g-t{font-size:15px;font-weight:800;margin-top:6px;letter-spacing:-.3px}
+  .grp .g-s{font-size:12px;color:var(--muted);margin-top:2px;line-height:1.3}
+  .grp .g-chk{position:absolute;top:8px;right:8px;width:24px;height:24px;border-radius:50%;background:var(--brand);color:#fff;display:none;align-items:center;justify-content:center;font-size:13px;font-weight:900}
+  .grp.sel .g-chk{display:flex}
+  .grp .g-lock{position:absolute;top:8px;left:8px;font-size:15px}
+  .grp-count{text-align:center;font-size:14px;font-weight:800;color:var(--brand-dark);margin:14px 0 4px}
+
+  /* 주간 리포트 */
+  .rep-hero{background:linear-gradient(135deg,#5B8DEF,#7AA6F5);color:#fff;border:none}
+  .rep-hero .big{font-size:44px;font-weight:900;letter-spacing:-2px}
+  .rep-hero .lbl{font-size:14px;opacity:.95;font-weight:700}
+  .wk{display:flex;align-items:flex-end;gap:7px;height:130px;margin-top:6px}
+  .wk .col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:5px;height:100%}
+  .wk .col .stk{width:78%;border-radius:8px;transition:height .9s cubic-bezier(.3,1,.4,1);min-height:6px;display:flex;align-items:flex-start;justify-content:center;color:#fff;font-size:11px;font-weight:900;padding-top:3px}
+  .wk .col .dy{font-size:12px;font-weight:700;color:var(--muted)}
+  .wk .col.today .dy{color:var(--brand-dark);font-weight:900}
+  .cat{margin-bottom:14px}.cat:last-child{margin-bottom:0}
+  .cat .c-top{display:flex;justify-content:space-between;font-size:14px;font-weight:800;margin-bottom:6px}
+  .cat .c-top .c-v{color:var(--muted)}
+  .cat .c-track{height:14px;background:#f0eae2;border-radius:8px;overflow:hidden}
+  .cat .c-track>i{display:block;height:100%;border-radius:8px;transition:width 1s cubic-bezier(.3,1,.4,1)}
+  .hl{display:flex;gap:12px}
+  .hl .hl-card{flex:1;background:var(--brand-soft);border-radius:16px;padding:14px;text-align:center}
+  .hl .hl-card .hl-ico{font-size:26px}.hl .hl-card .hl-n{font-size:20px;font-weight:900;margin-top:2px}
+  .hl .hl-card .hl-l{font-size:12px;color:var(--muted);font-weight:700;margin-top:1px}
+
+  /* 또래 비교 */
+  .cmp-row{margin-bottom:18px}.cmp-row:last-child{margin-bottom:0}
+  .cmp-l{font-size:15px;font-weight:800;margin-bottom:8px}
+  .cmp-bar{display:flex;align-items:center;gap:10px;margin-top:6px;font-size:13px;font-weight:800}
+  .cmp-bar .tag{width:38px;flex:none;color:var(--muted)}
+  .cmp-bar .track{flex:1;height:18px;background:#f0eae2;border-radius:10px;overflow:hidden}
+  .cmp-bar .track>i{display:block;height:100%;border-radius:10px;transition:width 1s cubic-bezier(.3,1,.4,1)}
+  .cmp-bar .val{width:52px;flex:none;text-align:right;color:var(--ink)}
+  .cmp-bar.me .tag{color:var(--brand-dark)}.cmp-bar.me .track>i{background:var(--brand)}
+  .cmp-bar.peer .track>i{background:#cdc3b7}
+  .rank{background:linear-gradient(135deg,#7A67D8,#9B87F0);color:#fff;border-radius:18px;padding:18px;text-align:center;font-size:15px;font-weight:800;line-height:1.6;box-shadow:var(--shadow)}
+  .rank b{font-size:17px}
+
+  /* 자녀 응원 카드(부모 홈) */
+  .cheer-box{background:linear-gradient(135deg,#EF6B8C,#F58BA6);color:#fff;border:none}
+  .cheer-box .cb-h{font-size:14px;font-weight:800;opacity:.95;display:flex;align-items:center;gap:6px}
+  .cheer-box .cb-msg{font-size:17px;font-weight:800;line-height:1.5;margin-top:8px;letter-spacing:-.3px}
+  .cheer-box .cb-from{font-size:13px;opacity:.9;font-weight:700;margin-top:8px;text-align:right}
+
+  /* 부모 소식(피드) */
+  .feed{display:flex;gap:12px;align-items:flex-start}
+  .feed .avatar{width:44px;height:44px;border-radius:50%;background:var(--brand-soft);display:flex;align-items:center;justify-content:center;font-size:22px;flex:none}
+  .feed .f-name{font-weight:800;font-size:15px}
+  .feed .f-time{font-size:12px;color:var(--muted);font-weight:600}
+  .feed .f-msg{font-size:15px;margin-top:6px;line-height:1.5}
+  .f-photo{height:170px;border-radius:14px;margin-top:10px;position:relative;overflow:hidden;background:#f0eae2}
+  .f-photo .fp-img{position:absolute;inset:0;background-size:cover;background-position:center}
+  .f-photo .fp-img.blurred{filter:blur(10px) brightness(.92)}
+  .f-photo .fp-lock{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:#6a5b48;font-weight:800;font-size:13px;background:rgba(255,255,255,.3)}
+  .f-photo .fp-lock .l-ico{font-size:24px}
+  .pill{display:inline-flex;align-items:center;gap:5px;background:var(--green-soft);color:#2f8a5e;font-size:12px;font-weight:800;padding:5px 11px;border-radius:20px;margin-top:8px}
+  .pill.b{background:var(--blue-soft);color:#3a6bd0}.pill.p{background:var(--pink-soft);color:#c2456a}
+  .react{display:flex;gap:8px;margin-top:12px}
+  .react button{border:1.5px solid var(--line);background:#fff;border-radius:20px;padding:7px 14px;font-size:13px;font-weight:800;cursor:pointer;color:var(--muted);transition:.15s}
+  .react button:active{transform:scale(.95)}
+  .react button.liked{background:var(--pink-soft);border-color:var(--pink);color:var(--pink)}
+
+  /* 플랜 바(자녀 전용) */
+  #planBar{display:none;align-items:center;gap:10px;background:#fff;border:1px solid var(--line);border-radius:16px;padding:10px 14px;margin:2px 0 12px;box-shadow:var(--shadow)}
+  #planBar .plan-l{flex:1}
+  #planBar .plan-l b{font-size:15px;font-weight:900}
+  #planBar .plan-l small{display:block;font-size:12px;color:var(--muted);font-weight:600;margin-top:1px}
+  #planBar.paid{background:linear-gradient(135deg,#FFF6E6,#FFE9C7);border-color:#F1C784}
+  #planBtn{border:none;border-radius:22px;padding:10px 16px;font-size:13px;font-weight:900;cursor:pointer;background:var(--brand-dark);color:#fff;flex:none}
+  #planBar.paid #planBtn{background:#fff;color:var(--brand-dark);border:1.5px solid #E7B366}
+
+  /* 갤러리 */
+  .seg{display:flex;gap:6px;background:#efe7dc;border-radius:16px;padding:5px;margin-bottom:14px}
+  .seg button{flex:1;border:none;background:none;border-radius:12px;padding:11px 6px;font-size:14px;font-weight:800;color:var(--muted);cursor:pointer;transition:.15s}
+  .seg button.on{background:#fff;color:var(--ink);box-shadow:0 2px 8px rgba(120,90,40,.12)}
+  .wk-badge{background:var(--brand-soft);color:var(--brand-dark);border-radius:14px;padding:12px 14px;font-size:13px;font-weight:800;margin-bottom:12px;text-align:center;line-height:1.4}
+  .video{border-radius:20px;overflow:hidden;position:relative;box-shadow:var(--shadow);cursor:pointer}
+  .video .frame{aspect-ratio:16/10;position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#000}
+  .video .slide{position:absolute;inset:0;background-size:cover;background-position:center;opacity:0;transition:opacity 1.2s}
+  .video .slide.on{opacity:1}
+  .play{position:absolute;width:66px;height:66px;border-radius:50%;background:rgba(255,255,255,.9);display:flex;align-items:center;justify-content:center;font-size:26px;color:var(--brand-dark);z-index:3;box-shadow:0 6px 20px rgba(0,0,0,.3)}
+  .v-overlay{position:absolute;left:0;right:0;bottom:0;padding:16px;z-index:2;background:linear-gradient(transparent,rgba(0,0,0,.75));color:#fff}
+  .v-overlay h3{font-size:18px;font-weight:900}.v-overlay p{font-size:13px;opacity:.9;margin-top:2px}
+
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .grid .ph{aspect-ratio:1;border-radius:14px;overflow:hidden;position:relative;background:#f0eae2}
+  .grid .ph .ph-img{position:absolute;inset:0;background-size:cover;background-position:center}
+  .grid .ph .ph-img.blurred{filter:blur(8px) brightness(.9)}
+  .grid .ph .ph-img span{position:absolute;bottom:5px;left:6px;font-size:16px;filter:drop-shadow(0 1px 2px rgba(0,0,0,.5))}
+  .grid .ph .lockbadge{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:20px;color:#7a6a58;background:rgba(255,255,255,.3);font-weight:800}
+  .grid .ph .lockbadge small{font-size:10px}
+
+  .empty{background:#fff;border:2px dashed var(--line);border-radius:18px;padding:36px 18px;text-align:center;color:var(--muted);font-weight:700;font-size:14px;line-height:1.6}
+  .empty .e-ico{font-size:40px;display:block;margin-bottom:10px}
+  .lock-card{background:linear-gradient(135deg,#7A67D8,#9B87F0);color:#fff;border-radius:20px;padding:28px 20px;text-align:center;box-shadow:var(--shadow)}
+  .lock-card .lc-ico{font-size:40px}
+  .lock-card h4{font-size:18px;font-weight:900;margin:10px 0 4px}
+  .lock-card p{font-size:13px;opacity:.95;line-height:1.5}
+  .lock-card button{margin-top:16px;background:#fff;color:#6B54C9;border:none;border-radius:24px;padding:12px 22px;font-size:14px;font-weight:900;cursor:pointer}
+
+  /* 선물 */
+  .gift-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .gift{background:#fff;border:2px solid var(--line);border-radius:18px;padding:16px 10px;text-align:center;cursor:pointer;transition:.15s;box-shadow:var(--shadow)}
+  .gift:active{transform:scale(.96)}
+  .gift .gf-ico{font-size:36px}
+  .gift .gf-n{font-size:14px;font-weight:800;margin-top:6px}
+  .gift .gf-a{font-size:13px;font-weight:800;margin-top:10px;color:#fff;background:var(--brand);border-radius:14px;padding:6px 0}
+  .gift.give .gf-a{background:var(--pink)}
+  .gift-row{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}
+  .gift-row:last-child{border-bottom:none}
+  .gift-row .gr-ico{width:46px;height:46px;border-radius:14px;background:var(--brand-soft);display:flex;align-items:center;justify-content:center;font-size:24px;flex:none}
+  .gift-row .gr-t{font-weight:800;font-size:15px}
+  .gift-row .gr-s{font-size:12px;color:var(--muted);font-weight:600;margin-top:2px}
+  .gift-row .gr-btn{margin-left:auto;border:none;background:var(--pink);color:#fff;border-radius:16px;padding:9px 16px;font-size:13px;font-weight:800;cursor:pointer;flex:none}
+  .gift-row .gr-btn:active{transform:scale(.95)}
+  .gift-row .gr-badge{margin-left:auto;font-size:13px;font-weight:800;color:var(--green);flex:none}
+
+  /* 알림 */
+  .noti{display:flex;gap:12px;align-items:center;padding:14px 4px;border-bottom:1px solid var(--line)}
+  .noti:last-child{border-bottom:none}
+  .noti .n-ico{width:44px;height:44px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:22px;flex:none}
+  .noti .n-t{font-size:14px;font-weight:700;line-height:1.4}
+  .noti .n-time{font-size:12px;color:var(--muted);margin-top:2px}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--pink);flex:none}
+
+  /* 탭바 */
+  .tabbar{position:absolute;left:0;right:0;bottom:0;height:82px;background:rgba(255,255,255,.92);
+    backdrop-filter:blur(12px);border-top:1px solid var(--line);display:flex;padding:8px 6px 20px;z-index:15}
+  .tabbar button{flex:1;border:none;background:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--muted);font-size:11px;font-weight:800;padding:4px 0}
+  .tabbar button .t-ico{font-size:23px;transition:.15s}
+  .tabbar button.on{color:var(--brand-dark)}
+  .tabbar button.on .t-ico{transform:translateY(-2px) scale(1.12)}
+
+  .toast{position:absolute;left:50%;bottom:110px;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;padding:13px 22px;border-radius:30px;font-size:14px;font-weight:800;opacity:0;pointer-events:none;transition:.3s;z-index:70;white-space:nowrap;box-shadow:0 8px 24px rgba(0,0,0,.3)}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .hint{text-align:center;font-size:12px;color:#a99;margin-top:14px}
+
+  /* 카메라 */
+  .cam-modal{position:absolute;inset:0;z-index:60;background:#000;display:none;flex-direction:column}
+  .cam-modal.show{display:flex}
+  .cam-modal video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#000}
+  .cam-theme{position:absolute;top:20px;left:50%;transform:translateX(-50%);z-index:3;background:rgba(0,0,0,.55);color:#fff;padding:10px 18px;border-radius:22px;font-size:14px;font-weight:800;white-space:nowrap}
+  .cam-close{position:absolute;top:16px;right:16px;z-index:3;background:rgba(0,0,0,.5);border:none;color:#fff;width:44px;height:44px;border-radius:50%;font-size:20px;cursor:pointer}
+  .cam-bottom{position:absolute;bottom:0;left:0;right:0;z-index:3;padding:28px 0 40px;display:flex;flex-direction:column;align-items:center;gap:12px}
+  .cam-hint{color:#fff;font-size:13px;font-weight:700;background:rgba(0,0,0,.4);padding:6px 14px;border-radius:16px}
+  .shutter{width:78px;height:78px;border-radius:50%;background:#fff;border:5px solid rgba(255,255,255,.45);cursor:pointer;box-shadow:0 0 0 4px rgba(0,0,0,.35);transition:.1s}
+  .shutter:active{transform:scale(.9)}
+
+  /* 응원 작성 모달 */
+  .cheer-modal{position:absolute;inset:0;z-index:62;background:rgba(20,14,8,.55);display:none;align-items:flex-end;justify-content:center}
+  .cheer-modal.show{display:flex}
+  .cheer-sheet{width:100%;background:#fff;border-radius:26px 26px 0 0;padding:22px 20px 26px;animation:up .3s ease}
+  @keyframes up{from{transform:translateY(100%)}to{transform:none}}
+  .cheer-sheet h3{font-size:19px;font-weight:900;letter-spacing:-.5px}
+  .cheer-sheet .cs-sub{font-size:13px;color:var(--muted);font-weight:600;margin:4px 0 14px}
+  .cheer-sheet textarea{min-height:92px;resize:none}
+  .quick-msgs{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 4px}
+  .quick-msgs button{border:1.5px solid var(--line);background:#fff;border-radius:20px;padding:8px 13px;font-size:13px;font-weight:700;cursor:pointer;color:var(--muted)}
+  .quick-msgs button:active{background:var(--brand-soft)}
+  .ob-skip{background:none;border:none;color:var(--muted);font-size:14px;font-weight:700;cursor:pointer;padding:14px;width:100%}
+
+  /* 추억 영상 재생 */
+  .mv-modal{position:absolute;inset:0;z-index:65;background:#000;display:none;flex-direction:column}
+  .mv-modal.show{display:flex}
+  .mv-stage{position:absolute;inset:0;background-size:cover;background-position:center;background-color:#111}
+  .mv-shade{position:absolute;inset:0;z-index:2;background:linear-gradient(transparent 52%,rgba(0,0,0,.72))}
+  @keyframes ken{from{transform:scale(1)}to{transform:scale(1.15)}}
+  .mv-top{position:absolute;top:18px;left:50%;transform:translateX(-50%);z-index:3;background:rgba(0,0,0,.5);color:#fff;padding:8px 16px;border-radius:20px;font-size:13px;font-weight:800;white-space:nowrap}
+  .mv-close{position:absolute;top:14px;right:14px;z-index:3;background:rgba(0,0,0,.5);border:none;color:#fff;width:42px;height:42px;border-radius:50%;font-size:19px;cursor:pointer}
+  .mv-cap{position:absolute;left:0;right:0;bottom:58px;z-index:3;text-align:center;color:#fff;font-size:17px;font-weight:800;padding:0 24px;text-shadow:0 2px 8px rgba(0,0,0,.6)}
+  .mv-count{position:absolute;right:16px;bottom:32px;z-index:3;color:#fff;font-size:12px;font-weight:700;opacity:.85}
+  .mv-bar{position:absolute;left:16px;right:16px;bottom:20px;z-index:3;height:5px;background:rgba(255,255,255,.3);border-radius:4px;overflow:hidden}
+  .mv-bar>i{display:block;height:100%;background:#fff;width:0;transition:width .4s linear}
+
+  /* 온보딩 */
+  .onboard{position:absolute;inset:0;z-index:50;background:var(--bg);display:flex;flex-direction:column}
+  .onboard.hidden{display:none}
+  .ob-page{flex:1;display:none;flex-direction:column;padding:34px 30px 30px;animation:fade .4s ease;overflow-y:auto}
+  .ob-page.active{display:flex}
+  .splash{background:linear-gradient(160deg,#F4A340,#EF6B8C);color:#fff;align-items:center;justify-content:center;text-align:center}
+  .knock{font-size:78px;animation:knock 1.6s ease-in-out infinite}
+  @keyframes knock{0%,100%{transform:rotate(0)}15%{transform:rotate(-14deg)}30%{transform:rotate(10deg)}45%{transform:rotate(-6deg)}60%{transform:rotate(0)}}
+  .splash h1{font-size:46px;font-weight:900;letter-spacing:-2px;margin-top:10px}
+  .splash .tag{font-size:16px;opacity:.95;margin-top:10px;font-weight:600;line-height:1.5}
+  .splash .go{margin-top:40px;background:#fff;color:var(--brand-dark);border:none;border-radius:30px;padding:16px 44px;font-size:18px;font-weight:900;cursor:pointer;box-shadow:0 10px 24px rgba(0,0,0,.2)}
+  .ob-h{margin-bottom:8px}
+  .ob-step{font-size:13px;font-weight:800;color:var(--brand-dark);letter-spacing:1px}
+  .ob-h h2{font-size:26px;font-weight:900;letter-spacing:-1px;margin-top:8px;line-height:1.3}
+  .ob-h p{font-size:15px;color:var(--muted);margin-top:8px;line-height:1.5;font-weight:600}
+  .ob-spacer{flex:1;min-height:14px}
+  .role-pick{display:flex;flex-direction:column;gap:14px;margin-top:24px}
+  .role-card{display:flex;align-items:center;gap:16px;background:#fff;border:2.5px solid var(--line);border-radius:20px;padding:20px;cursor:pointer;transition:.15s}
+  .role-card:active{transform:scale(.98)}
+  .role-card.sel{border-color:var(--brand);background:var(--brand-soft)}
+  .role-card .rc-ico{font-size:38px}.role-card .rc-t{font-size:19px;font-weight:900}.role-card .rc-s{font-size:13px;color:var(--muted);margin-top:2px;font-weight:600}
+  .ob-next{width:100%;border:none;border-radius:18px;padding:18px;font-size:18px;font-weight:900;color:#fff;background:var(--brand-dark);cursor:pointer;box-shadow:var(--shadow);transition:.15s}
+  .ob-next:active{transform:scale(.98)}
+  .ob-next:disabled{background:#d9cfc3;cursor:default;box-shadow:none}
+  .code-box{display:flex;gap:8px;justify-content:center;margin:20px 0}
+  .code-box input{width:46px;height:58px;text-align:center;font-size:26px;font-weight:900;border:2.5px solid var(--line);border-radius:14px;background:#fff;color:var(--ink)}
+  .code-box input:focus{outline:none;border-color:var(--brand)}
+  .invite-card{background:var(--brand-soft);border-radius:18px;padding:22px;text-align:center;margin-top:20px}
+  .invite-card .ic-code{font-size:34px;font-weight:900;letter-spacing:6px;color:var(--brand-dark)}
+  .invite-card .ic-l{font-size:13px;font-weight:800;color:var(--muted)}
+  /* 무료 그룹 안내 */
+  .free-groups{display:flex;flex-direction:column;gap:10px;margin-top:18px}
+  .fg{display:flex;align-items:center;gap:14px;background:#fff;border:2px solid var(--green);border-radius:18px;padding:14px 16px}
+  .fg .fg-ico{font-size:30px}.fg .fg-t{font-size:17px;font-weight:800}.fg .fg-s{font-size:13px;color:var(--muted);font-weight:600;margin-top:1px}
+  .fg .fg-mid{flex:1}
+  .fg .fg-open{background:var(--green-soft);color:#2f8a5e;font-size:12px;font-weight:800;padding:5px 12px;border-radius:16px;flex:none}
+  .fg-more{margin-top:16px;background:#f3eee7;border-radius:14px;padding:14px;font-size:13px;color:var(--muted);font-weight:700;text-align:center;line-height:1.5}
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="notch"></div>
+
+  <!-- ================= 온보딩 ================= -->
+  <div class="onboard" id="onboard">
+    <!-- 스플래시 -->
+    <div class="ob-page splash active" id="ob1">
+      <div class="knock">🚪</div>
+      <h1>똑똑</h1>
+      <div class="tag">부모님의 오늘 하루를<br>똑똑 두드려 보세요</div>
+      <button class="go" onclick="obGo('ob2')">시작하기</button>
+    </div>
+    <!-- 역할 선택 -->
+    <div class="ob-page" id="ob2">
+      <div class="ob-h"><div class="ob-step">STEP 1 / 3</div><h2>누구의 하루를<br>기록할까요?</h2><p>사용하실 분을 선택해주세요.</p></div>
+      <div class="role-pick">
+        <div class="role-card" id="pickSenior" onclick="pickRole('senior')"><div class="rc-ico">👵</div>
+          <div><div class="rc-t">부모님이에요</div><div class="rc-s">매일 미션을 수행해요</div></div></div>
+        <div class="role-card" id="pickChild" onclick="pickRole('child')"><div class="rc-ico">🧑</div>
+          <div><div class="rc-t">자녀예요</div><div class="rc-s">부모님 소식을 받아봐요</div></div></div>
+      </div>
+      <div class="ob-spacer"></div>
+      <button class="ob-next" id="ob2next" disabled onclick="obGo('ob3')">다음</button>
+    </div>
+    <!-- 로그인 -->
+    <div class="ob-page" id="ob3">
+      <div class="ob-h"><div class="ob-step">STEP 2 / 3</div><h2 id="loginTitle">전화번호로<br>간편하게 시작해요</h2><p id="loginDesc">문자로 받은 인증번호만 입력하면 끝이에요.</p></div>
+      <div id="loginSenior">
+        <label class="f">전화번호</label><input class="f" type="tel" value="010-1234-5678" />
+        <label class="f">인증번호</label><input class="f" type="number" value="482913" />
+      </div>
+      <div id="loginChild" style="display:none">
+        <button class="big-btn" style="background:#FEE500;color:#3c1e1e" onclick="obGo('ob4')">💬 카카오로 시작하기</button>
+        <button class="big-btn" style="background:#03C75A" onclick="obGo('ob4')">Ⓝ 네이버로 시작하기</button>
+        <button class="big-btn" style="background:var(--ink)" onclick="obGo('ob4')">✉️ 이메일로 시작하기</button>
+      </div>
+      <div class="ob-spacer"></div>
+      <button class="ob-next" id="ob3next" onclick="obGo('ob4')">다음</button>
+    </div>
+    <!-- 가족 연결 -->
+    <div class="ob-page" id="ob4">
+      <div class="ob-h"><div class="ob-step">STEP 3 / 3</div><h2>가족과 연결해요</h2></div>
+      <div id="linkSenior">
+        <p style="font-size:15px;color:var(--muted);font-weight:600;line-height:1.5">자녀에게 받은 <b>초대 코드 6자리</b>를 입력해주세요.</p>
+        <div class="code-box"><input maxlength="1" value="7"><input maxlength="1" value="3"><input maxlength="1" value="9"><input maxlength="1" value="2"><input maxlength="1" value="0"><input maxlength="1" value="4"></div>
+        <div style="text-align:center;color:var(--green);font-weight:800">✓ 아들 준호님과 연결돼요</div>
+      </div>
+      <div id="linkChild" style="display:none">
+        <p style="font-size:15px;color:var(--muted);font-weight:600;line-height:1.5">아래 초대 코드를 부모님께 알려주세요.</p>
+        <div class="invite-card"><div class="ic-l">나의 초대 코드</div><div class="ic-code">7 3 9 2 0 4</div></div>
+        <button class="big-btn o" onclick="toast('초대 링크를 복사했어요 📋')" style="margin-top:16px">🔗 초대 링크 복사하기</button>
+      </div>
+      <div class="ob-spacer"></div>
+      <button class="ob-next" onclick="afterLink()">연결하고 시작하기</button>
+      <button class="ob-skip" onclick="afterLink()">나중에 연결할게요</button>
+    </div>
+    <!-- 무료 그룹 안내 (부모 전용) -->
+    <div class="ob-page" id="ob5">
+      <div class="ob-h"><div class="ob-step">무료로 시작해요</div><h2>이 3가지로<br>매일을 채워봐요</h2>
+        <p>무료 버전에는 아래 3개 그룹이 열려 있어요.<br>매일 그룹마다 미션이 하나씩 나와요.</p></div>
+      <div class="free-groups">
+        <div class="fg"><span class="fg-ico">🏃</span><div class="fg-mid"><div class="fg-t">활동적인 것</div><div class="fg-s">걸음·스트레칭·산책</div></div><span class="fg-open">열림</span></div>
+        <div class="fg"><span class="fg-ico">📖</span><div class="fg-mid"><div class="fg-t">자기계발</div><div class="fg-s">독서·신문·일기</div></div><span class="fg-open">열림</span></div>
+        <div class="fg"><span class="fg-ico">📷</span><div class="fg-mid"><div class="fg-t">사진·기록</div><div class="fg-s">꽃·풍경·일상 사진</div></div><span class="fg-open">열림</span></div>
+      </div>
+      <div class="fg-more">🔒 인간관계 · 음식·건강 · 마음챙김 · 취미·여가 그룹은<br>자녀의 <b>유료 버전</b>에서 열려요</div>
+      <div class="ob-spacer"></div>
+      <button class="ob-next" onclick="startFree()">무료로 시작하기</button>
+    </div>
+  </div>
+
+  <!-- ================= 메인 앱 ================= -->
+  <div class="statusbar"><span id="clock">9:41</span><span>📶 🔋 100%</span></div>
+  <div class="rolebar">
+    <button id="roleSenior" class="on" onclick="setRole('senior')">👵 부모님 화면</button>
+    <button id="roleChild" onclick="setRole('child')">🧑 자녀 화면</button>
+  </div>
+
+  <div class="screen" id="screen">
+    <!-- 플랜 바(자녀 전용) -->
+    <div id="planBar">
+      <div class="plan-l"><b id="planName">무료 버전 사용 중</b><small id="planDesc">오늘 사진 · 기본 3개 그룹</small></div>
+      <button id="planBtn" onclick="togglePlan()">⭐ 유료 전환</button>
+    </div>
+
+    <!-- ===== 부모: 홈 ===== -->
+    <div class="view active" data-role="senior" data-tab="home">
+      <div class="greet"><div class="hi">따뜻한 하루예요 ☀️</div>
+        <div class="name"><span>영자</span>님, 안녕하세요</div>
+        <div class="date-chip" id="homeDate">오늘</div></div>
+      <div class="card summary"><div class="ring" style="--p:0%"><b>0/3</b></div>
+        <div><h3>오늘도 시작해볼까요?</h3><p>또래들은 벌써 움직이고 있어요<br>하나씩 눌러 완료해요 💪</p></div></div>
+      <div class="card cheer-box" id="cheerBox">
+        <div class="cb-h">💌 아들 준호님의 응원</div>
+        <div class="cb-msg" id="cheerMsg">엄마 오늘도 화이팅! 사진 잘 보고 있어요 🥰</div>
+        <div class="cb-from" id="cheerFrom">— 방금 전</div></div>
+      <div class="section-title">오늘의 미션 <small>3개 그룹에서 하나씩</small></div>
+      <div id="missionList"></div>
+      <button class="grp-change" onclick="go('groups')">🎯 미션 그룹 바꾸기</button>
+      <div class="hint">오늘도 또래들이 열심히 하고 있어요 · 지지 마세요! 💪</div>
+    </div>
+
+    <!-- ===== 부모: 미션 그룹 변경 ===== -->
+    <div class="view" data-role="senior" data-tab="groups">
+      <div class="greet"><div class="name">🎯 미션 그룹</div><div class="date-chip">관심 그룹 3개를 골라요</div></div>
+      <div class="card" style="padding:16px 16px 4px">
+        <p style="font-size:14px;color:var(--muted);font-weight:700;line-height:1.5;margin-bottom:12px" id="grpNote">무료 버전은 <b style="color:var(--brand-dark)">3개 그룹</b>이 열려 있어요. 나머지는 자녀의 유료 버전에서 열려요 🔒</p>
+        <div class="grp-grid" id="grpGrid"></div>
+        <div class="grp-count" id="grpCount">0 / 3 선택됨</div>
+      </div>
+      <button class="big-btn o grp-done" id="grpDone" onclick="confirmGroups()">이 그룹으로 시작하기</button>
+    </div>
+
+    <!-- ===== 부모: 내가 찍은 사진 ===== -->
+    <div class="view" data-role="senior" data-tab="photo">
+      <div class="greet"><div class="name">📷 내가 찍은 사진</div><div class="date-chip" id="seniorPhotoSub">오늘의 테마에 도전해요</div></div>
+      <div class="theme-hint">🌼 오늘의 테마 — <b>"노란 꽃을 찾아보세요"</b><br>한 장 담으면 가족에게 바로 전해져요!</div>
+      <button class="big-btn p" onclick="captureManual()" style="margin-top:14px">📸 지금 사진 찍기</button>
+      <div class="section-title">나의 사진첩 <small id="seniorCount">0장</small></div>
+      <div class="grid" id="seniorGrid"></div>
+      <div id="seniorEmpty" class="empty"><span class="e-ico">📸</span>아직 찍은 사진이 없어요.<br>위 버튼으로 첫 사진을 남겨보세요!</div>
+      <button class="big-btn" style="background:#efe7dc;color:var(--muted);margin-top:14px" onclick="go('home')">← 홈으로 돌아가기</button>
+    </div>
+
+    <!-- ===== 부모: 주간 리포트 ===== -->
+    <div class="view" data-role="senior" data-tab="report">
+      <div class="greet"><div class="name">📊 주간 리포트</div><div class="date-chip" id="reportRange">이번 주 · 한눈에 보기</div></div>
+      <div class="card rep-hero" style="display:flex;align-items:center;gap:18px">
+        <div><div class="big">86%</div><div class="lbl">이번 주 미션 달성률</div></div>
+        <div style="flex:1;text-align:right;line-height:1.5"><div style="font-size:26px;font-weight:900">18<span style="font-size:15px;opacity:.85">/21</span></div>
+          <div style="font-size:13px;opacity:.9;font-weight:700">지난주보다 +4개 ↑<br>또래 평균 11개 🔥</div></div>
+      </div>
+      <div class="card"><div class="section-title" style="margin:0 0 6px">요일별 달성 미션 <small>하루 3개 만점</small></div>
+        <div class="wk">
+          <div class="col"><div class="stk" style="height:66%;background:var(--green)">2</div><div class="dy">월</div></div>
+          <div class="col"><div class="stk" style="height:100%;background:var(--green)">3</div><div class="dy">화</div></div>
+          <div class="col"><div class="stk" style="height:33%;background:#d8cfc4">1</div><div class="dy">수</div></div>
+          <div class="col"><div class="stk" style="height:100%;background:var(--green)">3</div><div class="dy">목</div></div>
+          <div class="col"><div class="stk" style="height:100%;background:var(--green)">3</div><div class="dy">금</div></div>
+          <div class="col"><div class="stk" style="height:66%;background:var(--green)">2</div><div class="dy">토</div></div>
+          <div class="col today"><div class="stk" style="height:66%;background:var(--brand)">2</div><div class="dy" id="wkToday">오늘</div></div>
+        </div>
+      </div>
+      <div class="card"><div class="section-title" style="margin:0 0 14px">그룹별 성취 <small>이번 주</small></div>
+        <div class="cat"><div class="c-top"><span>🏃 활동적인 것</span><span class="c-v">6 / 7일</span></div><div class="c-track"><i style="width:86%;background:var(--green)"></i></div></div>
+        <div class="cat"><div class="c-top"><span>📖 자기계발</span><span class="c-v">5 / 7일</span></div><div class="c-track"><i style="width:71%;background:var(--blue)"></i></div></div>
+        <div class="cat"><div class="c-top"><span>📷 사진·기록</span><span class="c-v">7 / 7일</span></div><div class="c-track"><i style="width:100%;background:var(--pink)"></i></div></div>
+      </div>
+      <div class="section-title">이번 주 하이라이트</div>
+      <div class="card"><div class="hl">
+          <div class="hl-card"><div class="hl-ico">🔥</div><div class="hl-n">12일</div><div class="hl-l">연속 달성</div></div>
+          <div class="hl-card"><div class="hl-ico">👟</div><div class="hl-n">2.1만보</div><div class="hl-l">주간 걸음</div></div>
+          <div class="hl-card"><div class="hl-ico">🌼</div><div class="hl-n">9장</div><div class="hl-l">담은 사진</div></div>
+        </div>
+        <div class="rank" style="margin-top:14px">이번 주도 우리 동네 60대 중 <b>상위 14%</b> 🏆<br>가장 잘한 날은 <b>목요일</b>이었어요!</div>
+      </div>
+    </div>
+
+    <!-- ===== 부모: 내 기록 ===== -->
+    <div class="view" data-role="senior" data-tab="record">
+      <div class="greet"><div class="name">🏅 내 기록</div><div class="date-chip">모아둔 나의 활동</div></div>
+      <div class="card summary" style="background:linear-gradient(135deg,#7A67D8,#9B87F0)">
+        <div class="ring" style="--p:100%"><b style="background:#7A67D8">12</b></div>
+        <div><h3>12일 연속 달성 중!</h3><p>또래 평균은 4일이에요<br>압도적 1등, 멋져요 🔥</p></div></div>
+      <div class="section-title">또래와 비교 <small>같은 60대와 견줘봐요</small></div>
+      <div class="card">
+        <div class="cmp-row"><div class="cmp-l">👟 하루 걸음</div>
+          <div class="cmp-bar me"><span class="tag">나</span><div class="track"><i style="width:88%"></i></div><span class="val">3,240</span></div>
+          <div class="cmp-bar peer"><span class="tag">또래</span><div class="track"><i style="width:63%"></i></div><span class="val">2,300</span></div></div>
+        <div class="cmp-row"><div class="cmp-l">📖 이번 달 독서</div>
+          <div class="cmp-bar me"><span class="tag">나</span><div class="track"><i style="width:80%"></i></div><span class="val">21일</span></div>
+          <div class="cmp-bar peer"><span class="tag">또래</span><div class="track"><i style="width:46%"></i></div><span class="val">12일</span></div></div>
+        <div class="cmp-row"><div class="cmp-l">📷 이번 달 사진</div>
+          <div class="cmp-bar me"><span class="tag">나</span><div class="track"><i style="width:92%"></i></div><span class="val">34장</span></div>
+          <div class="cmp-bar peer"><span class="tag">또래</span><div class="track"><i style="width:57%"></i></div><span class="val">21장</span></div></div>
+      </div>
+      <div class="rank">🏆 우리 동네 60대 중 <b>상위 12%</b><br>조금만 더 하면 <b>TOP 10%</b>예요!</div>
+      <div class="section-title">이번 달 활동</div>
+      <div class="card" style="display:flex;justify-content:space-around;text-align:center">
+        <div><div style="font-size:26px;font-weight:900;color:var(--green)">28</div><small>걸음 달성</small></div>
+        <div><div style="font-size:26px;font-weight:900;color:var(--blue)">21</div><small>독서</small></div>
+        <div><div style="font-size:26px;font-weight:900;color:var(--pink)">34</div><small>사진</small></div>
+      </div>
+    </div>
+
+    <!-- ===== 부모: 선물 ===== -->
+    <div class="view" data-role="senior" data-tab="gift">
+      <div class="greet"><div class="name">🎁 선물</div><div class="date-chip">받고 싶은 선물을 졸라보세요</div></div>
+      <div class="section-title">자녀에게 받은 선물</div>
+      <div class="card" id="giftRecvCard" style="padding:6px 18px"><div id="giftReceived"></div></div>
+      <div id="giftReceivedEmpty" class="empty"><span class="e-ico">🎁</span>아직 받은 선물이 없어요.<br>아래에서 갖고 싶은 선물을 졸라보세요!</div>
+      <div class="section-title">이 선물, 조르기 <small>탭하면 자녀에게 전달돼요</small></div>
+      <div class="gift-grid" id="giftWish"></div>
+      <div class="section-title">내가 조른 선물</div>
+      <div class="card" id="giftMyReqCard" style="padding:6px 18px"><div id="giftMyReq"></div></div>
+      <div id="giftMyReqEmpty" class="empty" style="padding:24px"><span class="e-ico">😊</span>아직 조른 선물이 없어요.</div>
+    </div>
+
+    <!-- ===== 자녀: 부모 소식 ===== -->
+    <div class="view" data-role="child" data-tab="feed">
+      <div class="greet"><div class="hi">엄마의 오늘 하루 🌿</div>
+        <div class="name"><span>영자</span>님의 소식</div>
+        <div class="date-chip" id="feedDate">실시간</div></div>
+      <div id="feedList"></div>
+      <div id="feedEmpty" class="empty"><span class="e-ico">💛</span>아직 소식이 없어요.<br>부모님이 미션을 완료하면<br>이곳에 소식이 올라와요.</div>
+    </div>
+
+    <!-- ===== 자녀: 갤러리 ===== -->
+    <div class="view" data-role="child" data-tab="gallery">
+      <div class="greet"><div class="name">🖼️ 갤러리</div><div class="date-chip">엄마의 영상과 사진을 한곳에서</div></div>
+      <div class="seg">
+        <button class="on" id="segVideo" onclick="galTab('video')">🎬 추억 영상</button>
+        <button id="segPhoto" onclick="galTab('photo')">🖼️ 사진 <span id="albumCount">0</span></button>
+      </div>
+      <div id="galVideo"></div>
+      <div id="galPhoto" style="display:none"></div>
+    </div>
+
+    <!-- ===== 자녀: 알림 ===== -->
+    <div class="view" data-role="child" data-tab="noti">
+      <div class="greet"><div class="name">🔔 알림</div><div class="date-chip">엄마의 활동 소식</div></div>
+      <div class="card" style="padding:6px 18px" id="notiCard"><div id="notiList"></div></div>
+      <div id="notiEmpty" class="empty"><span class="e-ico">🔔</span>새로운 알림이 없어요.<br>부모님이 미션을 완료하면 알려드릴게요.</div>
+    </div>
+
+    <!-- ===== 자녀: 선물 ===== -->
+    <div class="view" data-role="child" data-tab="gift">
+      <div class="greet"><div class="name">🎁 선물</div><div class="date-chip">부모님께 마음을 전해요</div></div>
+      <div class="section-title">엄마가 조른 선물 <small>바로 보낼 수 있어요</small></div>
+      <div class="card" id="giftParentReqCard" style="padding:6px 18px"><div id="giftParentReq"></div></div>
+      <div id="giftParentReqEmpty" class="empty" style="padding:24px"><span class="e-ico">💛</span>엄마가 조른 선물이 아직 없어요.</div>
+      <div class="section-title">직접 선물하기 <small>탭하면 바로 전달돼요</small></div>
+      <div class="gift-grid" id="giftCatalog"></div>
+      <div class="section-title">보낸 선물</div>
+      <div class="card" id="giftSentCard" style="padding:6px 18px"><div id="giftSent"></div></div>
+      <div id="giftSentEmpty" class="empty" style="padding:24px"><span class="e-ico">💝</span>아직 보낸 선물이 없어요.</div>
+    </div>
+  </div><!-- /screen -->
+
+  <div class="toast" id="toast"></div>
+
+  <!-- 카메라 -->
+  <div class="cam-modal" id="camModal">
+    <video id="camVideo" autoplay playsinline muted></video>
+    <div class="cam-theme">🌼 오늘의 테마 · 노란 꽃을 담아보세요</div>
+    <button class="cam-close" onclick="closeCamera()">✕</button>
+    <div class="cam-bottom"><div class="cam-hint">가운데 버튼을 눌러 사진을 찍으세요</div><button class="shutter" onclick="shoot()"></button></div>
+  </div>
+  <input type="file" id="fileInput" accept="image/*" capture="environment" style="display:none" onchange="onFilePicked(event)" />
+
+  <!-- 응원 작성 -->
+  <div class="cheer-modal" id="cheerModal" onclick="if(event.target===this)closeCheer()">
+    <div class="cheer-sheet">
+      <h3>💌 엄마에게 응원 보내기</h3>
+      <div class="cs-sub">따뜻한 한마디가 엄마의 하루에 힘이 돼요.</div>
+      <textarea class="f" id="cheerText" placeholder="예) 엄마 오늘도 최고예요! 사진 잘 봤어요 🥰"></textarea>
+      <div class="quick-msgs">
+        <button onclick="quickCheer('엄마 최고예요! 오늘도 화이팅 💪')">엄마 최고예요 💪</button>
+        <button onclick="quickCheer('사진 너무 예뻐요 🥰')">사진 예뻐요 🥰</button>
+        <button onclick="quickCheer('건강 잘 챙기세요 💚')">건강 챙기세요 💚</button>
+        <button onclick="quickCheer('보고 싶어요 엄마 ❤️')">보고 싶어요 ❤️</button>
+      </div>
+      <button class="big-btn p" style="margin-top:12px" onclick="sendCheer()">📨 응원 보내기</button>
+      <button class="ob-skip" onclick="closeCheer()">닫기</button>
+    </div>
+  </div>
+
+  <!-- 추억 영상 재생 -->
+  <div class="mv-modal" id="mvModal">
+    <div class="mv-stage" id="mvStage"></div>
+    <div class="mv-shade"></div>
+    <div class="mv-top">🎬 이번 주 추억 영상 · ♪ 배경음악</div>
+    <button class="mv-close" onclick="stopMemoryVideo()">✕</button>
+    <div class="mv-cap" id="mvCap"></div>
+    <div class="mv-count" id="mvCount"></div>
+    <div class="mv-bar"><i id="mvProg"></i></div>
+  </div>
+
+  <div class="tabbar" id="tabbar"></div>
+</div>
+
+<script>
+  /* ===================== 상태 ===================== */
+  let role='senior';
+  let isPaid=false;
+  const FREE_GROUPS=['active','growth','photo'];
+  let selectedGroups=FREE_GROUPS.slice();
+  let photos=[];       // {url, bg, emoji, title, caption, ts}
+  let feedPosts=[];    // {kind, avatar, name, msg, pillClass, pillText, ts, url, bg}
+  let notis=[];        // {ico, bg, text, ts}
+  let giftRequests=[]; // 부모→자녀 조르기 {name, ico, ts, fulfilled}
+  let giftsReceived=[];// 자녀→부모 선물 {name, ico, ts, from}
+  let pickedRole=null, tempGroups=[], pendingPhotoCard=null, pendingPhotoInfo=null;
+  const GIFTS=[
+    {ico:'💐',name:'꽃다발'},{ico:'🍰',name:'케이크'},{ico:'🧣',name:'따뜻한 목도리'},{ico:'👟',name:'운동화'},
+    {ico:'☕',name:'카페 기프티콘'},{ico:'🍲',name:'건강식 세트'},{ico:'💊',name:'영양제 선물'},{ico:'💰',name:'용돈 5만원'}
+  ];
+
+  /* ===================== 시간(KST) ===================== */
+  function kstNow(){ const n=new Date(); return new Date(n.getTime()+n.getTimezoneOffset()*60000+9*3600000); }
+  function kstFromMs(ms){ const n=new Date(); return new Date(ms+n.getTimezoneOffset()*60000+9*3600000); }
+  function dayKey(d){ return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate(); }
+  function isToday(ms){ return dayKey(kstFromMs(ms))===dayKey(kstNow()); }
+  function olderThanDay(ms){ return (Date.now()-ms) > 86400000; }
+  const WD=['일','월','화','수','목','금','토'];
+  function tickClock(){
+    const k=kstNow();
+    const el=document.getElementById('clock');
+    if(el) el.textContent=String(k.getHours()).padStart(2,'0')+':'+String(k.getMinutes()).padStart(2,'0');
+  }
+  function fillDates(){
+    const k=kstNow();
+    const full=k.getFullYear()+'년 '+(k.getMonth()+1)+'월 '+k.getDate()+'일 '+WD[k.getDay()]+'요일';
+    const hd=document.getElementById('homeDate'); if(hd) hd.textContent=full;
+    const fd=document.getElementById('feedDate'); if(fd) fd.textContent=full+' · 실시간';
+    const wt=document.getElementById('wkToday'); if(wt) wt.textContent=WD[k.getDay()]+'·오늘';
+  }
+  function timeLabel(ms){
+    if(isToday(ms)){
+      const k=kstFromMs(ms);
+      const h=k.getHours(), ap=h<12?'오전':'오후', h12=(h%12)||12;
+      return ap+' '+h12+':'+String(k.getMinutes()).padStart(2,'0');
+    }
+    const days=Math.floor((Date.now()-ms)/86400000);
+    return days<=1?'어제':days+'일 전';
+  }
+
+  /* ===================== 미션 그룹 ===================== */
+  const GROUPS=[
+    {id:'active',ico:'🏃',color:'green',name:'활동적인 것',desc:'몸을 움직여요',missions:[
+      {ico:'👟',title:'걸음 걷기',sub:'3,000보 목표',peer:'또래보다 940보 앞서요'},
+      {ico:'🧘',title:'가벼운 스트레칭',sub:'5분 몸풀기',peer:'또래 3명 중 1명만 성공'},
+      {ico:'🪜',title:'계단 오르기',sub:'한 층만 걸어서',peer:'무릎이 튼튼해져요'},
+      {ico:'🚶',title:'동네 한 바퀴',sub:'10분 산책',peer:'또래들도 나섰어요'}]},
+    {id:'growth',ico:'📖',color:'blue',name:'자기계발',desc:'배우고 성장해요',missions:[
+      {ico:'📖',title:'책 읽기',sub:'한 줄이라도',peer:'또래 2명 중 1명만 성공'},
+      {ico:'📰',title:'신문 읽기',sub:'기사 하나',peer:'세상 소식에 밝아져요'},
+      {ico:'✍️',title:'일기 쓰기',sub:'오늘 한 줄',peer:'또래보다 부지런해요'},
+      {ico:'🈶',title:'한자 한 자 쓰기',sub:'또박또박 천천히',peer:'머리가 맑아져요'}]},
+    {id:'photo',ico:'📷',color:'pink',cam:true,name:'사진·기록',desc:'순간을 담아요',missions:[
+      {ico:'🌼',title:'꽃 사진 찍기',sub:'오늘의 테마 · 노란 꽃',peer:'또래는 벌써 12장!',caption:'산책길에 노란 꽃이 예뻐서 찍었단다 🌼'},
+      {ico:'🏞️',title:'풍경 사진 찍기',sub:'산책길 한 컷',peer:'추억 영상이 채워져요',caption:'오늘 산책길 풍경이 참 좋더구나 🏞️'},
+      {ico:'☁️',title:'하늘 사진 찍기',sub:'오늘의 하늘 한 장',peer:'한 장이면 역전!',caption:'하늘이 맑아서 한 장 담았단다 ☁️'},
+      {ico:'🍽️',title:'오늘의 식사 찍기',sub:'맛있게 드신 한 끼',peer:'가족이 안심해요',caption:'오늘 점심은 이렇게 먹었단다, 잘 챙겨 먹으렴 🍽️'}]},
+    {id:'social',ico:'💬',color:'purple',name:'인간관계',desc:'마음을 나눠요',missions:[
+      {ico:'📞',title:'안부 전화하기',sub:'가족·친구에게',peer:'또래 중 상위권!'},
+      {ico:'👋',title:'이웃과 인사하기',sub:'반갑게 한마디',peer:'동네 인기쟁이'},
+      {ico:'☕',title:'친구 만나기',sub:'차 한잔 약속',peer:'또래보다 활발해요'},
+      {ico:'💌',title:'손주에게 안부 남기기',sub:'짧은 메시지',peer:'손주가 기뻐해요'}]},
+    {id:'food',ico:'🍚',color:'orange',name:'음식·건강',desc:'몸을 챙겨요',missions:[
+      {ico:'💧',title:'물 여덟 잔 마시기',sub:'조금씩 자주',peer:'또래보다 건강해요'},
+      {ico:'🥗',title:'채소 챙겨 먹기',sub:'한 끼에 한 가지',peer:'혈관이 젊어져요'},
+      {ico:'🌅',title:'아침 든든히 먹기',sub:'거르지 않기',peer:'하루가 힘차져요'},
+      {ico:'💊',title:'영양제 챙기기',sub:'잊지 않고 한 알',peer:'꾸준함이 실력!'}]},
+    {id:'mind',ico:'🧘',color:'teal',name:'마음챙김',desc:'마음을 돌봐요',missions:[
+      {ico:'🌞',title:'햇볕 쬐기',sub:'창가에서 10분',peer:'기분이 맑아져요'},
+      {ico:'🙏',title:'감사한 일 적기',sub:'딱 한 가지',peer:'또래보다 여유로워요'},
+      {ico:'🎵',title:'좋아하는 음악 듣기',sub:'한 곡이면 충분',peer:'마음이 편안해져요'},
+      {ico:'😌',title:'심호흡 명상',sub:'5분 눈 감고',peer:'또래 중 드문 습관!'}]},
+    {id:'hobby',ico:'🎨',color:'red',name:'취미·여가',desc:'즐겁게 놀아요',missions:[
+      {ico:'🪴',title:'화분에 물 주기',sub:'식물과 인사',peer:'초록 손 등극!'},
+      {ico:'🎤',title:'노래 한 곡 부르기',sub:'흥얼흥얼',peer:'또래보다 즐거워요'},
+      {ico:'🖍️',title:'그림 그리기',sub:'낙서도 좋아요',peer:'감성이 살아나요'},
+      {ico:'🎴',title:'화투·바둑 한 판',sub:'머리 쓰기 놀이',peer:'치매 예방에 좋아요'}]},
+  ];
+  function groupById(id){ return GROUPS.find(g=>g.id===id); }
+  function available(id){ return isPaid || FREE_GROUPS.includes(id); }
+  function pillClassFor(c){ return c==='blue'?'b':(c==='green'?'':'p'); }
+
+  /* ===================== 온보딩 ===================== */
+  function obGo(id){ document.querySelectorAll('.ob-page').forEach(p=>p.classList.remove('active')); document.getElementById(id).classList.add('active'); }
+  function pickRole(r){
+    pickedRole=r;
+    document.getElementById('pickSenior').classList.toggle('sel',r==='senior');
+    document.getElementById('pickChild').classList.toggle('sel',r==='child');
+    document.getElementById('ob2next').disabled=false;
+    const s=r==='senior';
+    document.getElementById('loginSenior').style.display=s?'block':'none';
+    document.getElementById('loginChild').style.display=s?'none':'block';
+    document.getElementById('ob3next').style.display=s?'block':'none';
+    document.getElementById('loginTitle').innerHTML=s?'전화번호로<br>간편하게 시작해요':'소셜 계정으로<br>시작해요';
+    document.getElementById('loginDesc').textContent=s?'문자로 받은 인증번호만 입력하면 끝이에요.':'자주 쓰는 계정으로 3초 만에 시작하세요.';
+    document.getElementById('linkSenior').style.display=s?'block':'none';
+    document.getElementById('linkChild').style.display=s?'none':'block';
+  }
+  function afterLink(){ if(pickedRole==='child'){ enterApp(); } else { obGo('ob5'); } }
+  function startFree(){ selectedGroups=FREE_GROUPS.slice(); renderHomeMissions(); enterApp(); }
+  function enterApp(){ document.getElementById('onboard').classList.add('hidden'); setRole(pickedRole||'senior'); }
+
+  /* ===================== 탭/화면 ===================== */
+  const TABS={
+    senior:[{id:'home',ico:'🏠',label:'홈'},{id:'report',ico:'📊',label:'리포트'},{id:'record',ico:'🏅',label:'내 기록'},{id:'gift',ico:'🎁',label:'선물'}],
+    child:[{id:'feed',ico:'💛',label:'부모 소식'},{id:'gallery',ico:'🖼️',label:'갤러리'},{id:'noti',ico:'🔔',label:'알림'},{id:'gift',ico:'🎁',label:'선물'}]
+  };
+  function renderTabs(active){
+    const bar=document.getElementById('tabbar'); bar.innerHTML='';
+    TABS[role].forEach(t=>{ const b=document.createElement('button'); b.className=t.id===active?'on':'';
+      b.innerHTML='<span class="t-ico">'+t.ico+'</span>'+t.label; b.onclick=()=>go(t.id); bar.appendChild(b); });
+  }
+  function go(tab){
+    if(tab==='groups'){ tempGroups=selectedGroups.slice(); renderGroups(); }
+    if(tab==='gallery'){ renderGallery(); galTab(galCurrent); }
+    if(tab==='gift'){ renderGifts(); }
+    document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+    const t=document.querySelector('.view[data-role="'+role+'"][data-tab="'+tab+'"]'); if(t) t.classList.add('active');
+    renderTabs(tab);
+    document.getElementById('screen').scrollTo({top:0,behavior:'smooth'});
+  }
+  function setRole(r){
+    role=r;
+    document.getElementById('roleSenior').classList.toggle('on',r==='senior');
+    document.getElementById('roleChild').classList.toggle('on',r==='child');
+    document.getElementById('planBar').style.display=r==='child'?'flex':'none';
+    go(TABS[role][0].id);
+  }
+  function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(window._tt); window._tt=setTimeout(()=>t.classList.remove('show'),1900); }
+
+  /* ===================== 부모 홈 미션 ===================== */
+  function renderHomeMissions(){
+    const list=document.getElementById('missionList'); if(!list) return; list.innerHTML='';
+    selectedGroups.forEach(gid=>{
+      const g=groupById(gid); if(!g) return;
+      const m=g.missions[Math.floor(Math.random()*g.missions.length)];
+      const card=document.createElement('div'); card.className='card mission mc-'+g.color;
+      card.innerHTML='<div class="m-ico">'+m.ico+'</div><div class="m-body"><div class="m-title">'+m.title+
+        '</div><div class="m-sub">'+m.sub+' · '+m.peer+'</div><div class="bar"><i style="width:0%"></i></div></div>'+
+        '<div class="m-check">'+(g.cam?'📷':'○')+'</div>';
+      if(g.cam){ const chk=card.querySelector('.m-check'); chk.style.background='var(--pink)'; chk.style.borderColor='var(--pink)'; chk.style.fontSize='16px';
+        card.onclick=()=>{ pendingPhotoCard=card; pendingPhotoInfo={m:m,g:g}; openCamera(); };
+      } else { card.onclick=()=>completeMission(card,m,g); }
+      list.appendChild(card);
+    });
+    updateSummary();
+  }
+  function completeMission(card,m,g){
+    if(card.classList.contains('done')) return;
+    card.classList.add('done'); card.querySelector('.bar>i').style.width='100%';
+    card.querySelector('.m-check').textContent='✓';
+    card.querySelector('.m-sub').textContent='방금 완료 · 또래보다 앞서갔어요! 🔥';
+    toast('미션 완료! 또래보다 앞서갔어요 🔥'); updateSummary();
+    addFeedPost({kind:'mission',avatar:m.ico,name:"엄마가 '"+m.title+"' 미션을 완료했어요",
+      msg:m.sub+' · '+m.peer,pillClass:pillClassFor(g.color),pillText:g.ico+' '+g.name+' 미션 달성',ts:Date.now()});
+    addNoti({ico:m.ico,bg:'var(--green-soft)',text:"엄마가 <b>'"+m.title+"'</b> 미션을 완료했어요",ts:Date.now()});
+  }
+  function updateSummary(){
+    const missions=document.querySelectorAll('#missionList .mission');
+    const total=missions.length||3, done=document.querySelectorAll('#missionList .mission.done').length;
+    const home=document.querySelector('.view[data-tab="home"]');
+    const ring=home.querySelector('.summary .ring');
+    if(ring){ ring.querySelector('b').textContent=done+'/'+total; ring.style.setProperty('--p',(done/total*100)+'%'); }
+    const h=home.querySelector('.summary h3'), p=home.querySelector('.summary p');
+    if(done===0){ h.textContent='오늘도 시작해볼까요?'; p.innerHTML='또래들은 벌써 움직이고 있어요<br>하나씩 눌러 완료해요 💪'; }
+    else if(done<total){ h.textContent='또래보다 앞서고 있어요!'; p.innerHTML='하나만 더 하면<br>오늘 동네 1등도 노려봐요 🔥'; }
+    else{ h.textContent='오늘 미션 전부 완료! 🎉'; p.innerHTML='또래들 다 제쳤어요!<br>오늘의 동네 챔피언 👑'; }
+  }
+
+  /* ===================== 그룹 변경(부모) ===================== */
+  function renderGroups(){
+    const full=tempGroups.length>=3;
+    const grid=document.getElementById('grpGrid'); if(!grid) return; grid.innerHTML='';
+    GROUPS.forEach(g=>{
+      const locked=!available(g.id), sel=tempGroups.includes(g.id);
+      const el=document.createElement('div');
+      el.className='grp'+(sel?' sel':'')+(!sel&&full&&!locked?' dim':'')+(locked?' lock':'');
+      el.innerHTML=(locked?'<div class="g-lock">🔒</div>':'')+'<div class="g-chk">✓</div><div class="g-ico">'+g.ico+
+        '</div><div class="g-t">'+g.name+'</div><div class="g-s">'+g.desc+'</div>';
+      el.onclick=()=>toggleGroup(g.id);
+      grid.appendChild(el);
+    });
+    document.getElementById('grpCount').textContent=tempGroups.length+' / 3 선택됨';
+    document.getElementById('grpDone').style.opacity=tempGroups.length===3?'1':'.5';
+  }
+  function toggleGroup(id){
+    if(!available(id)){ toast('자녀가 유료 버전을 열어주면 사용할 수 있어요 🔒'); return; }
+    const i=tempGroups.indexOf(id);
+    if(i>=0){ tempGroups.splice(i,1); }
+    else{ if(tempGroups.length>=3){ toast('그룹은 3개까지 고를 수 있어요'); return; } tempGroups.push(id); }
+    renderGroups();
+  }
+  function confirmGroups(){
+    if(tempGroups.length!==3){ toast('그룹 3개를 골라주세요'); return; }
+    selectedGroups=tempGroups.slice(); renderHomeMissions();
+    toast('오늘의 미션이 새로 준비됐어요 🎯'); go('home');
+  }
+
+  /* ===================== 카메라 ===================== */
+  let camStream=null;
+  function captureManual(){ pendingPhotoCard=null; pendingPhotoInfo={m:{ico:'📷',title:'오늘의 순간',caption:'오늘도 예쁜 순간을 한 컷 남겼단다 📸'},g:groupById('photo')}; openCamera(); }
+  function openCamera(){
+    const modal=document.getElementById('camModal');
+    if(navigator.mediaDevices && navigator.mediaDevices.getUserMedia){
+      navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'},audio:false})
+        .then(stream=>{ camStream=stream; const v=document.getElementById('camVideo'); v.srcObject=stream; v.play().catch(()=>{}); modal.classList.add('show'); })
+        .catch(()=>{ fallbackFile(); });
+    } else { fallbackFile(); }
+  }
+  function fallbackFile(){ document.getElementById('fileInput').click(); }
+  function shoot(){
+    const v=document.getElementById('camVideo'); const c=document.createElement('canvas');
+    c.width=v.videoWidth||720; c.height=v.videoHeight||960; c.getContext('2d').drawImage(v,0,0,c.width,c.height);
+    let url=null; try{ url=c.toDataURL('image/jpeg',0.85); }catch(_){ url=null; }
+    closeCamera(); onPhotoTaken(url);
+  }
+  function closeCamera(){ document.getElementById('camModal').classList.remove('show'); if(camStream){ camStream.getTracks().forEach(t=>t.stop()); camStream=null; } }
+  function onFilePicked(e){ const f=e.target.files&&e.target.files[0]; if(!f){return;} const r=new FileReader(); r.onload=()=>onPhotoTaken(r.result); r.readAsDataURL(f); e.target.value=''; }
+
+  function onPhotoTaken(url){
+    const info=pendingPhotoInfo||{m:{ico:'📷',title:'오늘의 순간',caption:'오늘도 한 컷 남겼단다 📸'},g:groupById('photo')};
+    const m=info.m;
+    const photo={url:url||null, bg:url?null:'linear-gradient(135deg,#FDE7A0,#F5B942)', emoji:url?null:(m.ico||'🌼'),
+      title:m.title, caption:m.caption||'오늘의 한 컷', ts:Date.now()};
+    photos.unshift(photo);
+    toast('사진을 찍었어요! 가족에게 전달됐어요 🌸');
+    // 부모 홈 미션 카드 완료
+    if(pendingPhotoCard && !pendingPhotoCard.classList.contains('done')){
+      pendingPhotoCard.classList.add('done'); pendingPhotoCard.querySelector('.bar>i').style.width='100%';
+      const chk=pendingPhotoCard.querySelector('.m-check'); chk.textContent='✓'; chk.style.background='var(--green)'; chk.style.borderColor='var(--green)';
+      pendingPhotoCard.querySelector('.m-sub').textContent='방금 촬영 완료 · 또래 제치고 1등! 📸'; updateSummary();
+    }
+    // 자녀 소식/알림 — 부모 미션과 완전히 같은 내용
+    addFeedPost({kind:'photo',avatar:m.ico,name:'엄마가 사진을 남겼어요',msg:'“'+photo.caption+'”',
+      pillClass:'p',pillText:'📷 '+m.title,ts:photo.ts,url:photo.url,bg:photo.bg});
+    addNoti({ico:'📷',bg:'var(--pink-soft)',text:"엄마가 <b>사진 미션</b>을 완료했어요 · "+m.title,ts:photo.ts});
+    renderSeniorPhotos(); renderGallery();
+    if(role==='senior') go('photo');
+  }
+
+  /* ===================== 부모 사진첩 ===================== */
+  function photoStyle(p){ return p.url?"background-image:url('"+p.url+"');background-size:cover;background-position:center":"background:"+(p.bg||'linear-gradient(135deg,#FDE7A0,#F5B942)'); }
+  function tileHTML(p,gated){
+    const locked=gated&&!isToday(p.ts);
+    return '<div class="ph"><div class="ph-img'+(locked?' blurred':'')+'" style="'+photoStyle(p)+'">'+(p.emoji?'<span>'+p.emoji+'</span>':'')+'</div>'+
+      (locked?'<div class="lockbadge">🔒<small>유료</small></div>':'')+'</div>';
+  }
+  function renderSeniorPhotos(){
+    const grid=document.getElementById('seniorGrid'), empty=document.getElementById('seniorEmpty');
+    const cnt=document.getElementById('seniorCount'); if(cnt) cnt.textContent=photos.length+'장';
+    if(!grid) return;
+    grid.innerHTML=photos.map(p=>tileHTML(p,false)).join('');   // 부모는 자기 사진 항상 봄
+    grid.style.display=photos.length?'grid':'none';
+    if(empty) empty.style.display=photos.length?'none':'block';
+  }
+
+  /* ===================== 갤러리(자녀) ===================== */
+  let galCurrent='video';
+  function galTab(which){
+    galCurrent=which;
+    document.getElementById('segVideo').classList.toggle('on',which==='video');
+    document.getElementById('segPhoto').classList.toggle('on',which==='photo');
+    document.getElementById('galVideo').style.display=which==='video'?'block':'none';
+    document.getElementById('galPhoto').style.display=which==='photo'?'block':'none';
+  }
+  function renderGallery(){
+    document.getElementById('albumCount').textContent=photos.length;
+    // 사진 탭
+    const gp=document.getElementById('galPhoto');
+    if(!photos.length){
+      gp.innerHTML='<div class="empty"><span class="e-ico">📷</span>아직 사진이 없어요.<br>부모님이 사진을 찍으면 여기에 모여요.</div>';
+    } else {
+      let note = isPaid?'':'<div class="wk-badge">🔒 무료 버전은 <b>오늘 사진</b>만 볼 수 있어요 · 지난 사진은 유료 버전에서 열려요</div>';
+      gp.innerHTML=note+'<div class="grid">'+photos.map(p=>tileHTML(p,!isPaid)).join('')+'</div>';
+    }
+    // 영상 탭
+    const gv=document.getElementById('galVideo');
+    if(!isPaid){
+      gv.innerHTML='<div class="lock-card"><div class="lc-ico">🎬</div><h4>추억 영상은 유료 버전</h4>'+
+        '<p>한 주간 사진으로 만든 1분 영상은<br>유료 버전에서 감상할 수 있어요</p>'+
+        '<button onclick="togglePlan()">⭐ 유료 버전으로 열기</button></div>';
+    } else if(!photos.length){
+      gv.innerHTML='<div class="empty"><span class="e-ico">📽️</span>사진을 찍으면 이번 주 추억 영상이<br>자동으로 만들어져요.</div>';
+    } else {
+      const slides=photos.slice(0,8).map((p,i)=>'<div class="slide'+(i===0?' on':'')+'" style="'+photoStyle(p)+'"></div>').join('');
+      gv.innerHTML='<div class="wk-badge">✨ 매주 일요일, 한 주간 사진으로 자동 완성돼요</div>'+
+        '<div class="video" onclick="playMemoryVideo()"><div class="frame" id="vframe">'+slides+
+        '<div class="play">▶</div><div class="v-overlay"><h3>이번 주 · 엄마의 하루</h3>'+
+        '<p>사진 '+photos.length+'장으로 자동 완성 · ▶ 약 '+Math.min(59,Math.max(20,photos.length*6))+'초</p></div></div></div>'+
+        '<div class="react" style="justify-content:center;margin-top:14px">'+
+        '<button onclick="event.stopPropagation();toast(\'영상을 저장했어요 💾\')">💾 저장</button>'+
+        '<button onclick="event.stopPropagation();toast(\'가족에게 공유했어요 📤\')">📤 가족 공유</button></div>';
+      si=0;
+    }
+  }
+
+  /* ===================== 추억 영상 재생 + 배경음악 ===================== */
+  let mvTimer=null, mvIdx=0;
+  function playMemoryVideo(){
+    if(!isPaid){ toast('유료 버전에서 볼 수 있어요 ⭐'); return; }
+    if(!photos.length){ toast('아직 사진이 없어요 📷'); return; }
+    mvIdx=0; document.getElementById('mvModal').classList.add('show'); showMvFrame(); startBGM();
+    mvTimer=setInterval(()=>{ mvIdx++; if(mvIdx>=photos.length) mvIdx=0; showMvFrame(); },2600);
+  }
+  function showMvFrame(){
+    const p=photos[mvIdx], stage=document.getElementById('mvStage');
+    if(p.url){ stage.style.backgroundImage="url('"+p.url+"')"; }
+    else{ stage.style.backgroundImage='none'; stage.style.background=p.bg||'linear-gradient(135deg,#FDE7A0,#F5B942)'; }
+    stage.style.animation='none'; void stage.offsetWidth; stage.style.animation='ken 7s ease forwards';
+    document.getElementById('mvCap').textContent='“'+(p.caption||'')+'”';
+    document.getElementById('mvCount').textContent=(mvIdx+1)+' / '+photos.length;
+    document.getElementById('mvProg').style.width=((mvIdx+1)/photos.length*100)+'%';
+  }
+  function stopMemoryVideo(){ document.getElementById('mvModal').classList.remove('show'); if(mvTimer){clearInterval(mvTimer);mvTimer=null;} stopBGM(); }
+
+  let audioCtx=null, bgmTimer=null, bgmStep=0;
+  function startBGM(){
+    try{ audioCtx=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){ return; }
+    if(audioCtx.state==='suspended') audioCtx.resume();
+    const melody=[523.25,659.25,783.99,659.25,587.33,698.46,880.00,698.46]; // 따뜻한 아르페지오
+    bgmStep=0;
+    function note(){
+      const t=audioCtx.currentTime;
+      // 멜로디
+      const o=audioCtx.createOscillator(), g=audioCtx.createGain();
+      o.type='sine'; o.frequency.value=melody[bgmStep%melody.length];
+      g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(0.09,t+0.05); g.gain.exponentialRampToValueAtTime(0.0001,t+0.7);
+      o.connect(g); g.connect(audioCtx.destination); o.start(t); o.stop(t+0.75);
+      // 낮은 베이스
+      const b=audioCtx.createOscillator(), bg=audioCtx.createGain();
+      b.type='triangle'; b.frequency.value=melody[bgmStep%melody.length]/2;
+      bg.gain.setValueAtTime(0.0001,t); bg.gain.exponentialRampToValueAtTime(0.05,t+0.05); bg.gain.exponentialRampToValueAtTime(0.0001,t+0.9);
+      b.connect(bg); bg.connect(audioCtx.destination); b.start(t); b.stop(t+0.95);
+      bgmStep++;
+    }
+    note(); bgmTimer=setInterval(note,460);
+  }
+  function stopBGM(){ if(bgmTimer){clearInterval(bgmTimer);bgmTimer=null;} if(audioCtx){ try{audioCtx.close();}catch(e){} audioCtx=null; } }
+
+  /* ===================== 부모 소식(피드) ===================== */
+  function feedCardHTML(p){
+    let photo='';
+    if(p.kind==='photo'){
+      const locked=!isPaid && olderThanDay(p.ts);
+      const style=p.url?"background-image:url('"+p.url+"');background-size:cover;background-position:center":"background:"+(p.bg||'linear-gradient(135deg,#FDE7A0,#F5B942)');
+      photo='<div class="f-photo"><div class="fp-img'+(locked?' blurred':'')+'" style="'+style+'"></div>'+
+        (locked?'<div class="fp-lock"><span class="l-ico">🔒</span>지난 사진은 유료 버전에서 볼 수 있어요</div>':'')+'</div>';
+    }
+    return '<div class="card feed"><div class="avatar">'+p.avatar+'</div><div style="flex:1">'+
+      '<div class="f-name">'+p.name+'</div><div class="f-time">'+timeLabel(p.ts)+'</div>'+photo+
+      '<div class="f-msg">'+p.msg+'</div><span class="pill '+(p.pillClass||'')+'">'+p.pillText+'</span>'+
+      '<div class="react"><button onclick="like(this)">🧡 좋아요</button><button onclick="openCheer()">💬 응원 보내기</button></div></div></div>';
+  }
+  function renderFeed(){
+    const list=document.getElementById('feedList'), empty=document.getElementById('feedEmpty'); if(!list) return;
+    list.innerHTML=feedPosts.map(feedCardHTML).join('');
+    if(empty) empty.style.display=feedPosts.length?'none':'block';
+  }
+  function addFeedPost(p){ feedPosts.unshift(p); renderFeed(); }
+
+  /* ===================== 알림 ===================== */
+  function renderNoti(){
+    const list=document.getElementById('notiList'), card=document.getElementById('notiCard'), empty=document.getElementById('notiEmpty'); if(!list) return;
+    list.innerHTML=notis.map((n,i)=>'<div class="noti"><div class="n-ico" style="background:'+n.bg+'">'+n.ico+'</div>'+
+      '<div style="flex:1"><div class="n-t">'+n.text+'</div><div class="n-time">'+timeLabel(n.ts)+'</div></div>'+(i===0?'<div class="dot"></div>':'')+'</div>').join('');
+    card.style.display=notis.length?'block':'none';
+    if(empty) empty.style.display=notis.length?'none':'block';
+  }
+  function addNoti(n){ notis.unshift(n); renderNoti(); }
+
+  /* ===================== 플랜(무료/유료) ===================== */
+  function togglePlan(){
+    isPaid=!isPaid;
+    const bar=document.getElementById('planBar');
+    bar.classList.toggle('paid',isPaid);
+    document.getElementById('planName').textContent=isPaid?'유료 버전 사용 중 ⭐':'무료 버전 사용 중';
+    document.getElementById('planDesc').textContent=isPaid?'모든 그룹 · 모든 사진 · 추억 영상':'오늘 사진 · 기본 3개 그룹';
+    document.getElementById('planBtn').textContent=isPaid?'무료로 전환':'⭐ 유료 전환';
+    const note=document.getElementById('grpNote');
+    if(note) note.innerHTML=isPaid?'유료 버전! <b style="color:var(--brand-dark)">7개 그룹</b>이 모두 열렸어요. 원하는 3개를 골라보세요 ✨':'무료 버전은 <b style="color:var(--brand-dark)">3개 그룹</b>이 열려 있어요. 나머지는 자녀의 유료 버전에서 열려요 🔒';
+    renderGallery(); renderFeed(); if(document.querySelector('.view[data-tab="groups"].active')){ tempGroups=selectedGroups.slice(); renderGroups(); }
+    toast(isPaid?'유료 버전이 열렸어요! 모든 기능을 즐겨보세요 ⭐':'무료 버전으로 돌아왔어요');
+  }
+
+  /* ===================== 선물 ===================== */
+  function giftCatalogHTML(label,handler,cls){
+    return GIFTS.map((g,i)=>'<div class="gift '+cls+'" onclick="'+handler+'('+i+')"><div class="gf-ico">'+g.ico+'</div><div class="gf-n">'+g.name+'</div><div class="gf-a">'+label+'</div></div>').join('');
+  }
+  function giftRowHTML(ico,title,sub,right){
+    return '<div class="gift-row"><div class="gr-ico">'+ico+'</div><div style="flex:1"><div class="gr-t">'+title+'</div><div class="gr-s">'+sub+'</div></div>'+right+'</div>';
+  }
+  function setBlock(id,on){ const el=document.getElementById(id); if(el) el.style.display=on?'block':'none'; }
+  function renderGifts(){
+    // 부모: 받은 선물
+    const gr=document.getElementById('giftReceived');
+    if(gr){ gr.innerHTML=giftsReceived.map(x=>giftRowHTML(x.ico,x.name,x.from+' · '+timeLabel(x.ts),'<div class="gr-badge">💝 도착</div>')).join('');
+      setBlock('giftRecvCard',giftsReceived.length); setBlock('giftReceivedEmpty',!giftsReceived.length); }
+    // 부모: 조르기 카탈로그
+    const gw=document.getElementById('giftWish'); if(gw) gw.innerHTML=giftCatalogHTML('조르기','requestGift','');
+    // 부모: 내가 조른 선물
+    const gm=document.getElementById('giftMyReq');
+    if(gm){ gm.innerHTML=giftRequests.map(r=>giftRowHTML(r.ico,r.name,timeLabel(r.ts),
+      r.fulfilled?'<div class="gr-badge">✓ 받았어요</div>':'<div class="gr-badge" style="color:var(--brand-dark)">조르는 중…</div>')).join('');
+      setBlock('giftMyReqCard',giftRequests.length); setBlock('giftMyReqEmpty',!giftRequests.length); }
+    // 자녀: 부모가 조른 선물
+    const pr=document.getElementById('giftParentReq');
+    if(pr){ pr.innerHTML=giftRequests.map(r=>giftRowHTML(r.ico,r.name,'엄마가 조른 선물 · '+timeLabel(r.ts),
+      r.fulfilled?'<div class="gr-badge">✓ 보냄</div>':'<button class="gr-btn" onclick="sendGift(\''+r.name+'\',\''+r.ico+'\')">보내기</button>')).join('');
+      setBlock('giftParentReqCard',giftRequests.length); setBlock('giftParentReqEmpty',!giftRequests.length); }
+    // 자녀: 카탈로그
+    const gc=document.getElementById('giftCatalog'); if(gc) gc.innerHTML=giftCatalogHTML('선물하기','sendGiftIdx','give');
+    // 자녀: 보낸 선물
+    const gs=document.getElementById('giftSent');
+    if(gs){ gs.innerHTML=giftsReceived.map(x=>giftRowHTML(x.ico,x.name,'보냄 · '+timeLabel(x.ts),'<div class="gr-badge">💝</div>')).join('');
+      setBlock('giftSentCard',giftsReceived.length); setBlock('giftSentEmpty',!giftsReceived.length); }
+  }
+  function requestGift(i){
+    const g=GIFTS[i];
+    if(giftRequests.some(r=>r.name===g.name && !r.fulfilled)){ toast('이미 조른 선물이에요 🎁'); return; }
+    giftRequests.unshift({name:g.name,ico:g.ico,ts:Date.now(),fulfilled:false});
+    addNoti({ico:'🎁',bg:'var(--brand-soft)',text:'엄마가 <b>'+g.name+'</b>을(를) 조르고 있어요 🎁',ts:Date.now()});
+    renderGifts(); toast('"'+g.name+'" 조르기를 보냈어요! 🎁');
+  }
+  function sendGift(name,ico){
+    giftsReceived.unshift({name:name,ico:ico,ts:Date.now(),from:'아들 준호'});
+    const req=giftRequests.find(r=>r.name===name && !r.fulfilled); if(req) req.fulfilled=true;
+    renderGifts(); toast('"'+name+'" 선물을 보냈어요! 💝');
+  }
+  function sendGiftIdx(i){ const g=GIFTS[i]; sendGift(g.name,g.ico); }
+
+  /* ===================== 응원 ===================== */
+  function openCheer(){ document.getElementById('cheerText').value=''; document.getElementById('cheerModal').classList.add('show'); }
+  function closeCheer(){ document.getElementById('cheerModal').classList.remove('show'); }
+  function quickCheer(t){ document.getElementById('cheerText').value=t; }
+  function sendCheer(){
+    const t=document.getElementById('cheerText').value.trim();
+    if(!t){ toast('메시지를 입력해주세요 ✍️'); return; }
+    document.getElementById('cheerMsg').textContent=t;
+    document.getElementById('cheerFrom').textContent='— 방금 전 · 아들 준호';
+    closeCheer(); toast('엄마에게 응원을 전했어요 💌');
+  }
+
+  function like(btn){ btn.classList.toggle('liked'); if(btn.classList.contains('liked')) toast('좋아요를 보냈어요 🧡'); }
+
+  /* 갤러리 영상 미리보기 크로스페이드 */
+  let si=0;
+  setInterval(()=>{ const s=document.querySelectorAll('#vframe .slide'); if(!s.length) return; if(si>=s.length) si=0;
+    s[si].classList.remove('on'); si=(si+1)%s.length; s[si].classList.add('on'); },1800);
+
+  /* ===================== 초기화 ===================== */
+  tickClock(); setInterval(tickClock,1000); fillDates();
+  renderHomeMissions(); renderSeniorPhotos(); renderGallery(); renderFeed(); renderNoti(); renderGifts();
+  renderTabs('home');
+</script>
+</body>
+</html>
